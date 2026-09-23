@@ -1,0 +1,158 @@
+---
+import PageHero from '../components/PageHero.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatNumber, seriesList, site, stats, updatedAt, videos } from '../lib/data';
+
+const series = seriesList();
+const external = [
+  {
+    label: 'wiki.liwenya.com',
+    url: 'https://wiki.liwenya.com',
+    desc: '社区维护的李文亚 wiki，人物与术语条目较全，本站用于交叉校对人物别名与用词。',
+  },
+  {
+    label: 'wenyaverse.fandom.com',
+    url: 'https://wenyaverse.fandom.com',
+    desc: 'Fandom 上的 Wenyaverse Wiki，偏重二创、梗与人物关系整理。',
+  },
+  {
+    label: 'wenyaverse.fanarchive.co',
+    url: 'https://wenyaverse.fanarchive.co',
+    desc: '粉丝档案站，包含视频索引与时间线整理。',
+  },
+  {
+    label: 'bilibili.com',
+    url: 'https://www.bilibili.com',
+    desc: '13 个 B 站视频（含弹幕与评论语境）作为外部语境来源，仅使用公开可得的元数据与页面信息。',
+  },
+];
+
+const pipeline = [
+  { code: 'L0', title: '索引', desc: 'ffprobe 抽取全量元数据（时长 / 编码 / 分辨率 / 音轨），落 SQLite assets 表。' },
+  { code: 'L1', title: '听觉', desc: 'Whisper large-v3 词级时间戳转写 + 术语纠错 + 音乐/音效标签（CLAP / librosa）。' },
+  { code: 'L2', title: '视觉', desc: 'PySceneDetect 场景切分，Qwen3-VL 逐帧画面理解，RapidOCR 补充画面文字。' },
+  { code: 'L3', title: '对齐', desc: '现有 SRT/TXT + ASR + OCR 三源按时间轴合并，ASR 为主、OCR 补画面。' },
+  { code: 'L4', title: '场景卡', desc: '每个场景产出 {t0,t1,画面,台词,声音,画面文字,人物,情绪}，即本站的「逐场景理解结果」。' },
+  { code: 'L5', title: '视频级', desc: '一句话摘要 + 要点 + 实体关系 + 标签 + 时间线锚点。' },
+  { code: 'L6', title: '知识库', desc: 'SQLite FTS5 全文 + 向量索引 + 实体关系图。' },
+  { code: 'L7', title: '站点', desc: 'Astro 静态站 + Pagefind 搜索；构建期只读 src/data/*.json，不访问网络。' },
+];
+---
+
+<BaseLayout title="来源与参考" description="本站的数据来源、采集与理解流程说明、外部参考 wiki 链接与引用规范。">
+  <PageHero
+    eyebrow="Sources"
+    title="来源与参考"
+    desc="本站不生产原始素材：内容来自本地归档视频的自动理解结果，以及公开的参考 wiki 与 B 站页面。所有条目都应能回答「这句话出自哪个视频、第几秒」。"
+    meta={[formatNumber(stats.videos) + ' 个本地视频', '13 个 B 站视频', '3 个参考 wiki', '数据版本 ' + updatedAt]}
+  />
+
+  <div class="shell section space-y-16">
+    <section>
+      <SectionHeading
+        eyebrow="External"
+        title="外部参考站点"
+        desc="外部内容仅用于交叉校对与背景补充，转载时以原文为准；本站对外部链接内容不承担责任。"
+      />
+      <div class="mt-10 grid gap-5 md:grid-cols-2">
+        {external.map((e) => (
+          <a href={e.url} target="_blank" rel="noopener nofollow" class="card card-pad reveal">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="mono text-base font-bold">{e.label}</h3>
+              <span class="card-arrow">↗</span>
+            </div>
+            <p class="mt-3 text-sm leading-7 text-muted">{e.desc}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <SectionHeading
+        eyebrow="Pipeline"
+        title="采集与理解流程"
+        desc="归档视频经 L0–L6 流水线处理后导出为本站的 JSON 数据；站点只做展示，不做抓取。"
+      />
+      <ol class="mt-10 grid gap-4 md:grid-cols-2">
+        {pipeline.map((p) => (
+          <li class="card card-flat card-pad reveal flex gap-4">
+            <span class="mono shrink-0 text-sm font-bold text-accent-bright">{p.code}</span>
+            <div>
+              <h3 class="text-base font-bold">{p.title}</h3>
+              <p class="mt-2 text-sm leading-7 text-muted">{p.desc}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section>
+      <SectionHeading eyebrow="Inventory" title="归档构成" desc="按系列统计的视频数量与总时长（来自 assets 索引）。" />
+      <div class="mt-10 spec-bar">
+        <div class="spec-cell">
+          <div class="spec-value">{formatNumber(stats.videos)}<span class="spec-unit">个</span></div>
+          <div class="spec-label">视频总数</div>
+          <div class="spec-note">核心本体 + 番外系列</div>
+        </div>
+        <div class="spec-cell">
+          <div class="spec-value">{stats.hours}<span class="spec-unit">小时</span></div>
+          <div class="spec-label">总时长</div>
+          <div class="spec-note">平均约 8.5 分钟 / 个</div>
+        </div>
+        <div class="spec-cell">
+          <div class="spec-value">{series.length}<span class="spec-unit">类</span></div>
+          <div class="spec-label">系列分类</div>
+          <div class="spec-note">核心 / 互动 / 采访 / 其他</div>
+        </div>
+        <div class="spec-cell">
+          <div class="spec-value">{formatNumber(videos.filter((v) => (v.scenes ?? []).length > 0).length)}<span class="spec-unit">个</span></div>
+          <div class="spec-label">已含场景卡</div>
+          <div class="spec-note">示例数据，随流水线增长</div>
+        </div>
+      </div>
+
+      <div class="mt-8 card card-flat card-pad reveal">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs tracking-[0.14em] text-muted-dim uppercase">
+              <th class="pb-3">系列</th>
+              <th class="pb-3 text-right">视频数</th>
+              <th class="pb-3 text-right">总时长</th>
+            </tr>
+          </thead>
+          <tbody>
+            {series.map((s) => (
+              <tr class="border-t border-white/5">
+                <td class="py-3 pr-4">
+                  <a href={'/videos?series=' + encodeURIComponent(s.name)} class="text-[#d7dae1] hover:text-white">{s.name}</a>
+                </td>
+                <td class="mono py-3 text-right text-muted">{formatNumber(s.count)}</td>
+                <td class="mono py-3 text-right text-muted">{s.hours} h</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <SectionHeading eyebrow="Citation" title="引用规范" desc="引用本站内容时，请连同视频编号与时间码一并保留。" />
+      <div class="mt-8 card card-flat card-pad reveal prose-block text-sm leading-7">
+        <p><strong>条目引用格式：</strong>条目名．李文亚 Wiki．数据版本 {updatedAt}．</p>
+        <p><strong>视频引用格式：</strong>视频标题（视频 #编号，时间码 00:12:34）．李文亚 Wiki．</p>
+        <p><strong>溯源要求：</strong>本站所有结论都应能回溯到「哪个视频、第几秒」；若发现无法溯源的表述，请在来源页反馈。</p>
+        <p><strong>外部内容：</strong>来自参考 wiki 的表述以原文为准，本站仅作转述并标注链接。</p>
+      </div>
+    </section>
+
+    <section>
+      <SectionHeading eyebrow="Disclaimer" title="使用与免责" />
+      <div class="mt-8 card card-flat card-pad reveal prose-block text-sm leading-7">
+        <p>本站是<strong>非官方、非营利</strong>的爱好者档案整理项目，与李文亚本人及视频中出现的任何人物、机构均无隶属或合作关系。</p>
+        <p>视频中的主张、指控与自述均按「当事人陈述」记录，<strong>不构成事实认定，也不代表本站认同其观点</strong>。涉及医疗、健康相关内容时，请以专业机构意见为准。</p>
+        <p>本站不提供原始视频文件的下载或分发，仅展示自动生成的结构化理解结果与元数据；如权利人认为某处内容不妥，可通过来源页所列渠道提出，我们会及时处理。</p>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="页面不存在" description="没有找到该页面。">
+  <section class="hero-surface">
+    <div class="shell flex min-h-[70vh] flex-col justify-center py-24">
+      <span class="eyebrow">404</span>
+      <h1 class="display mt-6">页面不存在</h1>
+      <p class="lede mt-6 max-w-2xl">
+        这个条目可能还没有被流水线产出，或者链接已经失效。可以回到首页，或直接进入视频库与搜索。
+      </p>
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a href="/" class="btn btn-primary">回到首页</a>
+        <a href="/videos" class="btn btn-ghost">视频库</a>
+        <a href="/search" class="btn btn-ghost">站内搜索</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

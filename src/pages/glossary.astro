@@ -1,0 +1,145 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import PageHero from '../components/PageHero.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatNumber, glossary, resolveSources, updatedAt } from '../lib/data';
+import { LETTERS, initialOf } from '../lib/pinyin';
+
+const items = glossary
+  .map((g) => ({ g, initial: initialOf(g.term ?? g.id) }))
+  .sort((a, b) => a.initial.localeCompare(b.initial) || String(a.g.term ?? '').localeCompare(String(b.g.term ?? '')));
+
+const present = new Set(items.map((i) => i.initial));
+const letters = LETTERS.filter((l) => present.has(l));
+---
+
+<BaseLayout title="梗词典" description="文亚宇宙的专有名词、术语与网络迷因词典，支持关键词搜索与首字母筛选，逐条标注来源。" searchType="词条">
+  <PageHero
+    eyebrow="Glossary"
+    title="梗词典"
+    desc="视频内自称、社区用语与网络迷因的对照表。词条只描述用法与语境，不评价所指对象；带「待考」标记的条目表示来源不足。"
+    meta={[formatNumber(glossary.length) + ' 个词条', letters.length + ' 个首字母分组', '数据版本 ' + updatedAt]}
+  />
+
+  <div class="shell section">
+    <div class="reveal card card-pad sticky top-[calc(var(--header-h)+12px)] z-30 backdrop-blur-xl">
+      <div class="grid gap-4 md:grid-cols-[1.4fr_auto] md:items-center">
+        <label class="block">
+          <span class="field-label">搜索词条</span>
+          <input
+            id="glossary-q"
+            type="search"
+            class="input mt-2"
+            placeholder="输入词条、释义或别名，例如：话疗 / 诺委会 / 狱卒"
+            autocomplete="off"
+          />
+        </label>
+        <div class="flex items-end gap-3">
+          <p id="glossary-count" class="mono text-xs text-muted-dim">{items.length} / {items.length}</p>
+          <button id="glossary-reset" type="button" class="btn btn-ghost btn-sm">重置</button>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap gap-1.5" role="group" aria-label="首字母筛选">
+        <button class="chip chip-btn" data-letter="ALL" aria-pressed="true">全部</button>
+        {letters.map((l) => (
+          <button class="chip chip-btn mono" data-letter={l} aria-pressed="false">{l}</button>
+        ))}
+      </div>
+    </div>
+
+    <div id="glossary-list" class="mt-10 grid gap-5 md:grid-cols-2">
+      {items.map(({ g, initial }) => {
+        const sources = resolveSources(g.sources);
+        const haystack = [g.term, g.definition, ...(g.aliases ?? []), ...sources.map((s) => s.label)].join(' ');
+        return (
+          <article
+            class="card card-pad reveal"
+            id={g.id}
+            data-initial={initial}
+            data-search={haystack}
+          >
+            <div class="flex items-start justify-between gap-4">
+              <h2 class="text-lg font-extrabold tracking-tight">{g.term ?? g.id}</h2>
+              <span class="chip mono shrink-0">{initial}</span>
+            </div>
+            {(g.aliases ?? []).length > 0 && (
+              <p class="mt-2 text-xs text-muted-dim">别名：{(g.aliases ?? []).join(' / ')}</p>
+            )}
+            <p class="mt-3 text-sm leading-7 text-muted">{g.definition ?? '暂无释义。'}</p>
+            {sources.length > 0 && (
+              <div class="mt-4 flex flex-wrap gap-1.5">
+                {sources.map((s) =>
+                  s.href ? (
+                    <a
+                      href={s.href}
+                      class="chip chip-btn"
+                      target={s.external ? '_blank' : undefined}
+                      rel={s.external ? 'noopener nofollow' : undefined}
+                    >
+                      {s.label}{s.external && ' ↗'}
+                    </a>
+                  ) : (
+                    <span class="chip">{s.label}</span>
+                  )
+                )}
+              </div>
+            )}
+          </article>
+        );
+      })}
+    </div>
+
+    <div id="glossary-empty" class="empty-state mt-10 hidden">
+      <p class="text-base font-bold text-chalk">没有匹配的词条</p>
+      <p class="mt-2 text-sm">试试更短的关键词，或点击「重置」查看全部 {glossary.length} 个词条。</p>
+    </div>
+
+    {glossary.length === 0 && <EmptyState title="词条数据为空" desc="glossary.json 为空数组或所有条目缺少 id。" />}
+  </div>
+
+  <script>
+    // 梗词典：关键词 + 首字母筛选（纯客户端，无第三方库）
+    const q = document.getElementById('glossary-q') as HTMLInputElement | null;
+    const list = document.getElementById('glossary-list');
+    const count = document.getElementById('glossary-count');
+    const empty = document.getElementById('glossary-empty');
+    const reset = document.getElementById('glossary-reset');
+    const letterButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-letter]'));
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('#glossary-list [data-search]'));
+    let activeLetter = 'ALL';
+
+    const apply = () => {
+      const term = (q?.value ?? '').trim().toLowerCase();
+      let visible = 0;
+      for (const card of cards) {
+        const hay = (card.dataset.search ?? '').toLowerCase();
+        const okTerm = !term || hay.includes(term);
+        const okLetter = activeLetter === 'ALL' || card.dataset.initial === activeLetter;
+        const show = okTerm && okLetter;
+        card.hidden = !show;
+        card.classList.add('is-visible');
+        if (show) visible += 1;
+      }
+      if (count) count.textContent = visible + ' / ' + cards.length;
+      empty?.classList.toggle('hidden', visible !== 0);
+      list?.classList.toggle('hidden', visible === 0);
+    };
+
+    q?.addEventListener('input', apply);
+    reset?.addEventListener('click', () => {
+      if (q) q.value = '';
+      activeLetter = 'ALL';
+      letterButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.letter === 'ALL')));
+      apply();
+    });
+    letterButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeLetter = btn.dataset.letter ?? 'ALL';
+        letterButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        apply();
+      });
+    });
+    apply();
+  </script>
+</BaseLayout>

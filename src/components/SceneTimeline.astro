@@ -1,0 +1,84 @@
+---
+import { formatClock, formatTimecode, personName, type Scene } from '../lib/data';
+
+interface Props {
+  scenes?: Scene[];
+}
+const { scenes } = Astro.props;
+const list = scenes ?? [];
+---
+
+{list.length === 0 ? (
+  <div class="empty-state text-left md:text-center">
+    <p class="text-base font-bold text-chalk">该视频暂无逐场景理解结果</p>
+    <p class="mx-auto mt-2 max-w-xl text-sm">
+      流水线尚未产出这个视频的场景卡（画面 / 台词 / 声音 / 画面文字 / 人物）。索引与时长等元数据仍然可用，场景卡会在后续批次中补齐。
+    </p>
+  </div>
+) : (
+  <ol class="scene-rail space-y-4">
+    {list.map((s, i) => (
+      <li class="scene reveal" data-scene data-t0={s.t0} data-t1={s.t1}>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="scene-time">
+            {formatClock(s.t0)} – {formatClock(s.t1)}
+          </span>
+          <span class="field-label">场景 {String(i + 1).padStart(2, '0')}</span>
+          {s.mood && <span class="chip">{s.mood}</span>}
+          {typeof s.t0 === 'number' && <span class="dim mono text-xs">起点 {formatTimecode(s.t0)}</span>}
+        </div>
+
+        <div class="mt-4 grid gap-3">
+          {s.visual && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">画面</span>
+              <p class="text-sm leading-7 text-[#d7dae1]">{s.visual}</p>
+            </div>
+          )}
+          {s.action && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">动作</span>
+              <p class="text-sm leading-7 text-[#d7dae1]">{s.action}</p>
+            </div>
+          )}
+          {s.dialogue && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">台词</span>
+              <p class="border-l-2 border-accent/50 pl-3 text-sm leading-7 text-[#e6e8ec]">{s.dialogue}</p>
+            </div>
+          )}
+          {s.ocr && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">画面文字</span>
+              <p class="mono text-sm leading-7 text-muted">{s.ocr}</p>
+            </div>
+          )}
+          {s.audio && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">声音</span>
+              <p class="text-sm leading-7 text-muted">{s.audio}</p>
+            </div>
+          )}
+          {(s.people ?? []).length > 0 && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">人物</span>
+              <div class="flex flex-wrap gap-1.5">
+                {(s.people ?? []).map((p) => (
+                  <a href={'/people/' + p} class="chip chip-btn">{personName(p)}</a>
+                ))}
+              </div>
+            </div>
+          )}
+          {(s.keyframes ?? []).length > 0 && (
+            <div class="grid gap-1 md:grid-cols-[92px_1fr] md:gap-4">
+              <span class="field-label md:pt-1">关键帧</span>
+              <div class="flex flex-wrap gap-1.5">
+                {(s.keyframes ?? []).map((k) => <span class="chip mono">{k}</span>)}
+              </div>
+            </div>
+          )}
+        </div>
+      </li>
+    ))}
+  </ol>
+)}

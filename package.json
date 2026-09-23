@@ -1,0 +1,23 @@
+{
+  "name": "liwenya-wiki",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/postbuild.mjs",
+    "preview": "astro preview --host 127.0.0.1 --port 4321",
+    "preview:dist": "npx --yes serve dist -l 4321",
+    "astro": "astro",
+    "data:mock": "node scripts/gen-mock-data.mjs"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "astro": "^5.14.1",
+    "tailwindcss": "^4.1.14",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "pagefind": "^1.4.0"
+  }
+}

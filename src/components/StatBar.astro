@@ -1,0 +1,24 @@
+---
+interface Stat {
+  value: string;
+  unit?: string;
+  label: string;
+  note?: string;
+}
+interface Props {
+  items: Stat[];
+}
+const { items } = Astro.props;
+---
+
+<div class="spec-bar reveal">
+  {items.map((s) => (
+    <div class="spec-cell">
+      <div class="spec-value">
+        {s.value}{s.unit && <span class="spec-unit">{s.unit}</span>}
+      </div>
+      <div class="spec-label">{s.label}</div>
+      {s.note && <div class="spec-note">{s.note}</div>}
+    </div>
+  ))}
+</div>

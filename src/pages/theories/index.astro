@@ -1,0 +1,48 @@
+---
+import EmptyState from '../../components/EmptyState.astro';
+import PageHero from '../../components/PageHero.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatNumber, resolveSources, theories, updatedAt, videoById } from '../../lib/data';
+
+const cards = theories.map((t) => {
+  const evidence = (t.evidence ?? []).filter((e) => e && e.videoId);
+  const videos = evidence.map((e) => videoById.get(e.videoId!)).filter(Boolean);
+  return { t, evidence, videos, sources: resolveSources(t.sources) };
+});
+const totalEvidence = cards.reduce((s, c) => s + c.evidence.length, 0);
+---
+
+<BaseLayout title="理论体系" description="李文亚提出的自创理论整理：推翻万有引力定律、地球的运动轨迹、黑体生物等，每条附证据视频与时间码。" searchType="理论">
+  <PageHero
+    eyebrow="Theories"
+    title="理论体系"
+    desc="把归档视频中反复出现的自创说法整理成条目。每条理论都标注证据来源（视频编号 + 时间码）与参考 wiki，便于逐条回溯；本站只做整理与转述，不做真伪认定。"
+    meta={[formatNumber(theories.length) + ' 条理论', formatNumber(totalEvidence) + ' 处证据锚点', '数据版本 ' + updatedAt]}
+  />
+
+  <div class="shell section">
+    {cards.length === 0 ? (
+      <EmptyState title="理论数据为空" desc="theories.json 为空数组或所有条目缺少 id。" />
+    ) : (
+      <div class="grid gap-5 md:grid-cols-2">
+        {cards.map(({ t, evidence, videos, sources }) => (
+          <a href={'/theories/' + t.id} class="card card-pad reveal">
+            <div class="flex items-start justify-between gap-4">
+              <h2 class="text-xl font-extrabold tracking-tight">{t.name ?? t.id}</h2>
+              <span class="card-arrow text-lg">→</span>
+            </div>
+            {(t.aliases ?? []).length > 0 && (
+              <p class="mt-2 text-xs text-muted-dim">别名：{(t.aliases ?? []).join(' / ')}</p>
+            )}
+            <p class="mt-4 line-clamp-3 text-sm leading-7 text-muted">{t.summary ?? '暂无摘要。'}</p>
+            <div class="mt-5 flex flex-wrap gap-1.5">
+              <span class="chip chip-accent">{formatNumber(evidence.length)} 处证据</span>
+              <span class="chip">{formatNumber(videos.length)} 个视频</span>
+              {sources.slice(0, 2).map((s) => <span class="chip">{s.label}</span>)}
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>

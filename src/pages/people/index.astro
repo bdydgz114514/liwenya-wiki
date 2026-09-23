@@ -1,0 +1,74 @@
+---
+import EmptyState from '../../components/EmptyState.astro';
+import PageHero from '../../components/PageHero.astro';
+import SectionHeading from '../../components/SectionHeading.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatNumber, people, updatedAt } from '../../lib/data';
+
+const groups = [
+  { key: '主要记录对象', items: people.filter((p) => (p.type ?? '').includes('主要记录对象')) },
+  { key: '视频内自称 / 组织', items: people.filter((p) => (p.type ?? '').includes('自称') || (p.type ?? '').includes('组织')) },
+  { key: '互动与对抗对象', items: people.filter((p) => /互动|对抗|访谈|辩论/.test(p.type ?? '')) },
+  { key: '概念与其他人格分支', items: people.filter((p) => (p.type ?? '').includes('概念')) },
+];
+const grouped = groups.filter((g) => g.items.length > 0);
+const rest = people.filter((p) => !grouped.some((g) => g.items.includes(p)));
+---
+
+<BaseLayout title="人物志" description="李文亚及其视频中出现的人物、组织与人格分支条目，逐条标注出处与关联视频。" searchType="人物">
+  <PageHero
+    eyebrow="People"
+    title="人物志"
+    desc="记录主要记录对象、视频内自称的组织、被点名的辩论对象与互动对象。涉及真实人物时，只描述其在归档视频中的呈现，并标注对应视频与时间码。"
+    meta={[formatNumber(people.length) + ' 个条目', '数据版本 ' + updatedAt]}
+  />
+
+  <div class="shell section">
+    {people.length === 0 ? (
+      <EmptyState title="人物数据为空" desc="people.json 为空数组或所有条目缺少 id 字段。" />
+    ) : (
+      <div class="space-y-16">
+        {grouped.map((g) => (
+          <section>
+            <SectionHeading eyebrow={String(g.items.length) + ' 条'} title={g.key} />
+            <div class="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {g.items.map((p) => (
+                <a href={'/people/' + p.id} class="card card-pad reveal">
+                  <div class="flex items-start justify-between gap-3">
+                    <h3 class="text-lg font-extrabold tracking-tight">{p.name ?? p.id}</h3>
+                    <span class="card-arrow">→</span>
+                  </div>
+                  {p.type && <p class="mono mt-2 text-xs text-accent-bright">{p.type}</p>}
+                  {(p.aliases ?? []).length > 0 && (
+                    <p class="mt-3 text-xs text-muted-dim">别名：{(p.aliases ?? []).join(' / ')}</p>
+                  )}
+                  <p class="mt-3 line-clamp-3 text-sm leading-7 text-muted">{p.summary ?? '暂无摘要。'}</p>
+                  <div class="mt-4 flex flex-wrap gap-1.5">
+                    {(p.tags ?? []).slice(0, 3).map((t) => <span class="chip">{t}</span>)}
+                    {(p.videoRefs ?? []).length > 0 && (
+                      <span class="chip chip-accent">{formatNumber((p.videoRefs ?? []).length)} 个关联视频</span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {rest.length > 0 && (
+          <section>
+            <SectionHeading eyebrow={String(rest.length) + ' 条'} title="其他条目" />
+            <div class="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {rest.map((p) => (
+                <a href={'/people/' + p.id} class="card card-pad reveal">
+                  <h3 class="text-lg font-extrabold tracking-tight">{p.name ?? p.id}</h3>
+                  <p class="mt-3 line-clamp-3 text-sm leading-7 text-muted">{p.summary ?? '暂无摘要。'}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    )}
+  </div>
+</BaseLayout>

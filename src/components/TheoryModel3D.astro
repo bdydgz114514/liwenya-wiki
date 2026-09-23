@@ -1,0 +1,181 @@
+---
+// 3D 物理模型演示（three.js，按 kind 生成不同场景；离线打包，不依赖 CDN）
+interface Props { kind?: string; caption?: string; title?: string }
+const { kind = 'triple_shell', caption = '', title = '' } = Astro.props;
+---
+<div class="model3d overflow-hidden rounded-xl border border-white/10 bg-black/40">
+  <div class="relative">
+    <canvas class="model3d-canvas block h-[320px] w-full" data-kind={kind}></canvas>
+    <div class="pointer-events-none absolute right-3 top-3 rounded-md border border-white/10 bg-black/60 px-2 py-1 text-[11px] text-[#9aa2b1]">拖动旋转 · 滚轮缩放</div>
+  </div>
+  {caption && <p class="border-t border-white/10 px-4 py-3 text-xs leading-6 text-muted">{caption}</p>}
+</div>
+
+<script>
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+  const ACCENT = 0xe23a2e;
+  const GOLD = 0xf0b429;
+  const BLUE = 0x4f8cff;
+
+  function base(canvas: HTMLCanvasElement) {
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 200);
+    camera.position.set(6, 4.2, 8);
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    key.position.set(6, 9, 7);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x88aaff, 0.5);
+    rim.position.set(-7, -4, -6);
+    scene.add(rim);
+    function resize() {
+      const w = canvas.clientWidth || 600, h = canvas.clientHeight || 320;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    addEventListener('resize', resize);
+    return { renderer, scene, camera, controls };
+  }
+
+  function grid(scene: THREE.Scene, size = 14) {
+    const g = new THREE.GridHelper(size, 14, 0x2a3040, 0x1b2029);
+    (g.material as THREE.Material).transparent = true;
+    (g.material as THREE.Material).opacity = 0.5;
+    g.position.y = -3.2;
+    scene.add(g);
+  }
+
+  function shell(scene: THREE.Scene, r: number, color: number, opacity: number) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 40, 28),
+      new THREE.MeshPhongMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }));
+    scene.add(s);
+    const w = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14),
+      new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: opacity * 1.6 }));
+    scene.add(w);
+    return s;
+  }
+
+  const builders: Record<string, (s: THREE.Scene) => (t: number) => void> = {
+    triple_shell(s) {
+      s.add(new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), new THREE.MeshPhongMaterial({ color: 0x2f6fd0, emissive: 0x0a1a33 })));
+      const a = shell(s, 1.9, ACCENT, 0.1), b = shell(s, 2.8, GOLD, 0.09), c = shell(s, 3.8, BLUE, 0.07);
+      return (t) => { [a, b, c].forEach((m, i) => { m.rotation.y = t * (0.12 + i * 0.05); }); };
+    },
+    particle_flow(s) {
+      const sun = new THREE.Mesh(new THREE.SphereGeometry(1.1, 40, 28), new THREE.MeshBasicMaterial({ color: GOLD }));
+      s.add(sun);
+      const N = 900, pos = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { const r = 1.2 + Math.random() * 5.4, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+        pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = r * Math.cos(ph) * 0.5; pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      s.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffe08a, size: 0.06, transparent: true, opacity: 0.9 })));
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.02, 8, 120), new THREE.MeshBasicMaterial({ color: 0x8899bb, transparent: true, opacity: 0.5 }));
+      ring.rotation.x = Math.PI / 2; s.add(ring);
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 18), new THREE.MeshPhongMaterial({ color: 0x4fa3ff }));
+      s.add(planet);
+      const pts = s.children[s.children.length - 2] as THREE.Points;
+      return (t) => { planet.position.set(Math.cos(t * 0.6) * 4.2, 0, Math.sin(t * 0.6) * 4.2); pts.rotation.y = t * 0.06; };
+    },
+    earth_trapezoid(s) {
+      const p = [[0, 0, -3], [2.6, 0, -1.2], [2.6, 0, 1.2], [0, 0, 3], [-2.6, 0, 1.2], [-2.6, 0, -1.2]];
+      const geo = new THREE.BufferGeometry().setFromPoints(p.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+      s.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: ACCENT, linewidth: 2 })));
+      const e = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.02, 8, 120), new THREE.MeshBasicMaterial({ color: 0x667088, transparent: true, opacity: 0.55 }));
+      e.rotation.x = Math.PI / 2; s.add(e);
+      s.add(new THREE.Mesh(new THREE.SphereGeometry(0.75, 32, 22), new THREE.MeshBasicMaterial({ color: GOLD })));
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 18), new THREE.MeshPhongMaterial({ color: 0x3f8cff }));
+      s.add(earth);
+      const curve = new THREE.CatmullRomCurve3(p.map(([x, y, z]) => new THREE.Vector3(x, y, z)), true);
+      return (t) => { const v = curve.getPointAt((t * 0.12) % 1); earth.position.copy(v); };
+    },
+    sun_scale(s) {
+      const small = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 22), new THREE.MeshBasicMaterial({ color: GOLD }));
+      small.position.set(-3.4, 0, 0); s.add(small);
+      const big = new THREE.Mesh(new THREE.SphereGeometry(3.0, 40, 28), new THREE.MeshBasicMaterial({ color: 0xff7043, transparent: true, opacity: 0.85 }));
+      big.position.set(3.0, 0, 0); s.add(big);
+      const mk = (x: number, y: number, c: number, r: number) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), new THREE.MeshPhongMaterial({ color: c })); m.position.set(x, y, 0); s.add(m); };
+      mk(-3.4, -1.3, 0x4fa3ff, 0.12); mk(3.0, -3.4, 0x4fa3ff, 0.12);
+      return () => { small.rotation.y += 0.01; big.rotation.y -= 0.004; };
+    },
+    microbe_body(s) {
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.9, 3.4, 12, 24),
+        new THREE.MeshPhongMaterial({ color: 0x2a3345, transparent: true, opacity: 0.55 }));
+      s.add(body);
+      const N = 420, pos = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 1.7; pos[i * 3 + 1] = (Math.random() - 0.5) * 4.6; pos[i * 3 + 2] = (Math.random() - 0.5) * 1.7; }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9b5cff, size: 0.09 }));
+      s.add(pts);
+      return (t) => { pts.rotation.y = t * 0.25; };
+    },
+    leaf_stomata(s) {
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.14, 5), new THREE.MeshPhongMaterial({ color: 0x1f4d2b }));
+      s.add(leaf);
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+        const g = new THREE.Group();
+        const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.28, 18, 12), new THREE.MeshPhongMaterial({ color: 0x53d769 }));
+        c1.scale.set(1, 0.55, 1.5); c1.position.x = -0.32;
+        const c2 = c1.clone(); c2.position.x = 0.32;
+        g.add(c1, c2);
+        g.position.set(-3 + i * 1.5, 0.14, -1.6 + j * 1.6);
+        s.add(g);
+      }
+      return (t) => { leaf.rotation.y = Math.sin(t * 0.15) * 0.05; };
+    },
+    math_surface(s) {
+      const f = (x: number, y: number) => Math.sin(x * 0.8) * Math.cos(y * 0.8) * 1.05;
+      const g = new THREE.Group();
+      g.rotation.x = -Math.PI / 3.1;
+      const geo = new THREE.PlaneGeometry(6.4, 6.4, 30, 30);
+      const attr = geo.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < attr.count; i++) attr.setZ(i, f(attr.getX(i), attr.getY(i)));
+      geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x2f6fd0, transparent: true, opacity: 0.6, side: THREE.DoubleSide, shininess: 60 })));
+      g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x9dc0ff, wireframe: true, transparent: true, opacity: 0.22 })));
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), new THREE.MeshBasicMaterial({ color: GOLD }));
+      g.add(dot);
+      const tanGeo = new THREE.BufferGeometry();
+      const tan = new THREE.Line(tanGeo, new THREE.LineBasicMaterial({ color: ACCENT }));
+      g.add(tan);
+      s.add(g);
+      return (t) => {
+        const x = Math.sin(t * 0.45) * 2.4, y = Math.cos(t * 0.31) * 2.4;
+        dot.position.set(x, y, f(x, y) + 0.1);
+        tanGeo.setFromPoints([
+          new THREE.Vector3(x - 1.3, y, f(x - 1.3, y) + 0.1),
+          new THREE.Vector3(x + 1.3, y, f(x + 1.3, y) + 0.1),
+        ]);
+        g.rotation.y = Math.sin(t * 0.13) * 0.28;
+      };
+    },
+    energy_law(s) {
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.45, 28, 20), new THREE.MeshPhongMaterial({ color: ACCENT, emissive: 0x3a0d08 }));
+      s.add(ball);
+      const arrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-4, 2.4, 0), 3, 0x6f7b91);
+      s.add(arrow);
+      const cols = [0x2a3345, 0x37455e, 0x46597a, 0x5a739c];
+      cols.forEach((c, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshPhongMaterial({ color: c })); m.position.set(-3.4 + i * 1.3, -1.6, 0); s.add(m); });
+      return (t) => { ball.position.set(Math.sin(t * 0.9) * 3.2, 0.2, Math.cos(t * 0.9) * 1.2); };
+    },
+  };
+
+  document.querySelectorAll<HTMLCanvasElement>('canvas.model3d-canvas').forEach((canvas) => {
+    const kind = canvas.dataset.kind || 'triple_shell';
+    const build = builders[kind] ?? builders.triple_shell;
+    const { renderer, scene, camera, controls } = base(canvas);
+    grid(scene);
+    const tick = build(scene);
+    const clock = new THREE.Clock();
+    const loop = () => { const t = clock.getElapsedTime(); tick(t); controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); };
+    loop();
+  });
+</script>

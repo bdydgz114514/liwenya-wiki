@@ -1,0 +1,82 @@
+---
+const path = Astro.url.pathname;
+const links = [
+  { href: '/', label: '首页' },
+  { href: '/people', label: '人物志' },
+  { href: '/theories', label: '理论体系' },
+  { href: '/timeline', label: '事件年表' },
+  { href: '/glossary', label: '梗词典' },
+  { href: '/videos', label: '视频库' },
+  { href: '/sources', label: '来源' },
+  { href: '/about', label: '关于' },
+];
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<header
+  id="site-header"
+  data-pagefind-ignore
+  data-scrolled="false"
+  class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-ink-900/70 backdrop-blur-xl transition-colors duration-300 data-[scrolled=true]:border-line data-[scrolled=true]:bg-ink-950/90"
+>
+  <div class="shell flex h-[var(--header-h)] items-center justify-between gap-4">
+    <a href="/" class="group flex items-center gap-3" aria-label="李文亚 Wiki 首页">
+      <span
+        class="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-[15px] font-black text-white shadow-[0_8px_24px_-10px_rgba(226,58,46,0.9)] transition-transform duration-200 group-hover:scale-105"
+        >文</span
+      >
+      <span class="flex flex-col leading-none">
+        <span class="text-[15px] font-extrabold tracking-tight">李文亚 WIKI</span>
+        <span class="mono mt-0.5 text-[10px] tracking-[0.28em] text-muted-dim">WENYAVERSE</span>
+      </span>
+    </a>
+
+    <nav class="hidden items-center gap-6 lg:flex" aria-label="主导航">
+      {links.map((l) => (
+        <a href={l.href} class="nav-link" aria-current={isActive(l.href) ? 'page' : undefined}>{l.label}</a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a href="/search" class="btn btn-ghost btn-sm" aria-label="站内搜索">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>
+        </svg>
+        <span class="hidden sm:inline">搜索</span>
+      </a>
+      <button
+        id="menu-toggle"
+        type="button"
+        class="btn btn-ghost btn-sm lg:hidden"
+        aria-expanded="false"
+        aria-controls="mobile-drawer"
+        aria-label="打开菜单"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端抽屉 -->
+  <div
+    id="mobile-drawer"
+    data-open="false"
+    class="fixed inset-x-0 top-[var(--header-h)] bottom-0 z-40 hidden overflow-y-auto border-t border-line bg-ink-950/97 backdrop-blur-xl data-[open=true]:block lg:!hidden"
+  >
+    <nav class="shell flex flex-col py-4" aria-label="移动端导航">
+      {links.map((l) => (
+        <a
+          href={l.href}
+          class="flex items-center justify-between border-b border-white/5 py-4 text-lg font-bold"
+          aria-current={isActive(l.href) ? 'page' : undefined}
+        >
+          <span>{l.label}</span>
+          <span class="card-arrow">→</span>
+        </a>
+      ))}
+      <a href="/search" class="mt-6 btn btn-primary">站内搜索</a>
+    </nav>
+  </div>
+</header>

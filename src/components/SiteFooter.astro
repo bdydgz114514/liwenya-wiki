@@ -1,0 +1,77 @@
+---
+import { resolveSources, site, siteTagline, siteTitle, stats, updatedAt } from '../lib/data';
+
+const year = new Date().getFullYear();
+const sources = resolveSources(site.sources);
+const columns = [
+  {
+    title: '内容',
+    links: [
+      { href: '/people', label: '人物志' },
+      { href: '/theories', label: '理论体系' },
+      { href: '/timeline', label: '事件年表' },
+      { href: '/glossary', label: '梗词典' },
+    ],
+  },
+  {
+    title: '数据',
+    links: [
+      { href: '/videos', label: '视频库（' + stats.videos + '）' },
+      { href: '/search', label: '站内搜索' },
+      { href: '/sources', label: '来源与参考' },
+      { href: '/about', label: '方法论与声明' },
+    ],
+  },
+];
+---
+
+<footer class="mt-8 border-t border-line bg-ink-950" data-pagefind-ignore>
+  <div class="shell grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
+    <div class="lg:col-span-1">
+      <div class="flex items-center gap-3">
+        <span class="grid h-8 w-8 place-items-center rounded-[9px] bg-accent text-sm font-black text-white">文</span>
+        <span class="text-sm font-extrabold tracking-tight">{siteTitle}</span>
+      </div>
+      <p class="mt-4 text-sm leading-7 text-muted">{siteTagline}</p>
+      <p class="mono mt-4 text-xs text-muted-dim">数据更新：{updatedAt}</p>
+    </div>
+
+    {columns.map((col) => (
+      <div>
+        <h3 class="text-xs font-bold tracking-[0.2em] text-muted-dim uppercase">{col.title}</h3>
+        <ul class="mt-4 space-y-2.5 text-sm">
+          {col.links.map((l) => (
+            <li><a href={l.href} class="text-muted transition-colors hover:text-white">{l.label}</a></li>
+          ))}
+        </ul>
+      </div>
+    ))}
+
+    <div>
+      <h3 class="text-xs font-bold tracking-[0.2em] text-muted-dim uppercase">参考来源</h3>
+      <ul class="mt-4 space-y-2.5 text-sm">
+        {sources.map((s) => (
+          <li>
+            {s.href ? (
+              <a href={s.href} class="text-muted transition-colors hover:text-white" rel="noopener nofollow" target="_blank">
+                {s.label} ↗
+              </a>
+            ) : (
+              <span class="text-muted">{s.label}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+
+  <div class="border-t border-line">
+    <div class="shell flex flex-col gap-3 py-6 text-xs leading-6 text-muted-dim md:flex-row md:items-center md:justify-between">
+      <p>© {year} {siteTitle} · 非官方、非营利的爱好者档案项目，与任何当事人无隶属关系。</p>
+      <p>
+        本站内容以归档视频的自动理解结果为主源，可能存在识别误差；所有陈述均标注出处，不构成事实认定或任何建议。
+        <a href="/about" class="link-underline text-muted">免责与隐私声明</a>
+      </p>
+    </div>
+  </div>
+</footer>

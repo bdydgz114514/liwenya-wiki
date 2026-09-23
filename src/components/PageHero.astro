@@ -1,0 +1,26 @@
+---
+interface Props {
+  eyebrow?: string;
+  title: string;
+  desc?: string;
+  meta?: string[];
+}
+const { eyebrow, title, desc, meta } = Astro.props;
+---
+
+<section class="hero-surface">
+  <div class="shell pt-[calc(var(--header-h)+3rem)] pb-14 md:pt-[calc(var(--header-h)+4.5rem)] md:pb-20">
+    <div class="reveal max-w-4xl">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h1 class="display-sm mt-5 text-shadow-hero balance">{title}</h1>
+      {desc && <p class="lede mt-6 max-w-3xl">{desc}</p>}
+      {meta && meta.length > 0 && (
+        <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+          {meta.map((m) => <span class="mono">{m}</span>)}
+        </div>
+      )}
+      <div class="accent-rule mt-8"></div>
+      <slot />
+    </div>
+  </div>
+</section>

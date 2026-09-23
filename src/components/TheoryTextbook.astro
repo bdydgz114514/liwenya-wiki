@@ -1,0 +1,66 @@
+---
+// 教科书级讲解：分节渲染 + 3D 模型演示
+import TheoryModel3D from './TheoryModel3D.astro';
+interface Formula { tex?: string; note?: string }
+interface Row { a?: string; b?: string; c?: string }
+interface Sec { h?: string; p?: string[]; list?: string[]; table?: Row[] }
+interface Textbook { intro?: string; sections?: Sec[]; formulas?: Formula[]; model3d?: { kind?: string; caption?: string } }
+const { textbook, title } = Astro.props as { textbook?: Textbook; title?: string };
+---
+{textbook && (
+  <section class="mt-10 reveal" id="textbook">
+    <div class="flex items-end justify-between gap-4">
+      <h2 class="field-label">教科书级讲解</h2>
+      <span class="chip">主张陈述 + 主流对照</span>
+    </div>
+    {textbook.intro && <p class="mt-4 text-[15px] leading-8 text-[#c9cfda]">{textbook.intro}</p>}
+
+    {textbook.model3d && (
+      <div class="mt-6">
+        <TheoryModel3D kind={textbook.model3d.kind ?? 'triple_shell'} caption={textbook.model3d.caption ?? ''} title={title ?? ''} />
+      </div>
+    )}
+
+    {(textbook.sections ?? []).map((s) => (
+      <div class="card card-flat card-pad mt-5">
+        {s.h && <h3 class="text-base font-bold text-white">{s.h}</h3>}
+        {(s.p ?? []).map((para) => <p class="mt-3 text-[15px] leading-8 text-[#c3c9d6]">{para}</p>)}
+        {(s.list ?? []).length > 0 && (
+          <ul class="mt-3 space-y-2 text-[15px] leading-8 text-[#c3c9d6]">
+            {(s.list ?? []).map((li) => (
+              <li class="flex gap-3"><span class="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-accent,#e23a2e)]"></span><span>{li}</span></li>
+            ))}
+          </ul>
+        )}
+        {(s.table ?? []).length > 0 && (
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+              <thead><tr class="text-left text-muted"><th class="border-b border-white/10 py-2 pr-4">{title} 主张</th><th class="border-b border-white/10 py-2 pr-4">主张内容</th><th class="border-b border-white/10 py-2">主流科学结论</th></tr></thead>
+              <tbody>
+                {(s.table ?? []).map((r) => (
+                  <tr><td class="border-b border-white/5 py-2 pr-4 text-[#d7dae1]">{r.a}</td><td class="border-b border-white/5 py-2 pr-4 text-[#c3c9d6]">{r.b}</td><td class="border-b border-white/5 py-2 text-[#9aa2b1]">{r.c}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    ))}
+
+    {(textbook.formulas ?? []).length > 0 && (
+      <div class="card card-flat card-pad mt-5">
+        <h3 class="text-base font-bold text-white">关键量与公式</h3>
+        {(textbook.formulas ?? []).map((f) => (
+          <div class="mt-3 rounded-lg border border-white/10 bg-black/30 px-4 py-3">
+            <div class="mono text-[15px] text-[#ffd7cf]">{f.tex}</div>
+            {f.note && <div class="mt-1 text-xs text-muted">{f.note}</div>}
+          </div>
+        ))}
+      </div>
+    )}
+
+    <p class="mt-5 text-xs leading-6 text-muted">
+      说明：本节按「主张陈述 → 与主流科学对照 → 可检验性」的结构整理，内容依据站内证据锚点与公开资料；本站对任何主张不作真实性背书，请读者以可重复的检验为准。
+    </p>
+  </section>
+)}

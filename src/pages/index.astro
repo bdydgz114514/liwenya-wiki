@@ -1,0 +1,257 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import StatBar from '../components/StatBar.astro';
+import TimelineList from '../components/TimelineList.astro';
+import VideoCard from '../components/VideoCard.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {
+  featuredVideos,
+  formatNumber,
+  glossary,
+  latestEvents,
+  people,
+  resolveSources,
+  seriesList,
+  site,
+  stats,
+  theories,
+  updatedAt,
+  videos,
+} from '../lib/data';
+
+const featured = featuredVideos(6);
+const eventsPreview = latestEvents(4);
+const series = seriesList().slice(0, 6);
+const maxSeries = series[0]?.count ?? 1;
+const withScenes = videos.filter((v) => (v.scenes ?? []).length > 0).length;
+const sources = resolveSources(site.sources);
+
+const navCards = [
+  {
+    href: '/people',
+    index: '01',
+    title: '人物志',
+    count: formatNumber(people.length) + ' 个条目',
+    desc: '记录李文亚本人、视频内自称的组织、被点名的辩论对象与互动对象，逐条标注出处。',
+  },
+  {
+    href: '/theories',
+    index: '02',
+    title: '理论体系',
+    count: formatNumber(theories.length) + ' 个理论',
+    desc: '「推翻万有引力定律」「地球的运动轨迹」「黑体生物」等自创说法的整理与证据时间码。',
+  },
+  {
+    href: '/timeline',
+    index: '03',
+    title: '事件年表',
+    count: formatNumber(stats.events) + ' 个节点',
+    desc: '按年份分组的时间线：从 2024 年 11 月的第一个视频到番外采访系列与最新归档进度。',
+  },
+  {
+    href: '/glossary',
+    index: '04',
+    title: '梗词典',
+    count: formatNumber(glossary.length) + ' 个词条',
+    desc: '文亚宇宙的专有名词与网络迷因：狱卒、话疗、诺委会、114514 研究所……支持搜索与首字母筛选。',
+  },
+  {
+    href: '/videos',
+    index: '05',
+    title: '视频库',
+    count: formatNumber(stats.videos) + ' 个视频',
+    desc: '全量归档索引：缩略图占位、标题、时长、系列与标签，支持关键词、系列与标签组合筛选。',
+  },
+  {
+    href: '/about',
+    index: '06',
+    title: '关于本站',
+    count: '方法论 · 声明',
+    desc: '数据来源、理解流水线、引用规范、免责声明与隐私声明（不收录住址、健康等私密信息）。',
+  },
+];
+
+const specRows = [
+  { key: '归档视频', val: formatNumber(stats.videos) + ' 个 MKV' },
+  { key: '总时长', val: stats.hours + ' 小时' },
+  { key: '画面规格', val: '1920 × 1080 · AV1' },
+  { key: '音轨', val: 'Opus 48kHz 单声道' },
+  { key: '已含场景卡', val: formatNumber(withScenes) + ' 个视频（示例数据）' },
+  { key: 'B 站补充', val: '13 个视频（含弹幕与评论语境）' },
+];
+---
+
+<BaseLayout>
+  <!-- ===================== HERO ===================== -->
+  <section class="hero-surface relative overflow-hidden">
+    <div class="shell grid gap-14 pt-[calc(var(--header-h)+3.5rem)] pb-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:pb-24">
+      <div class="reveal">
+        <span class="eyebrow">Wenyaverse · 多模态理解知识库</span>
+        <h1 class="display mt-6 text-shadow-hero">
+          李文亚<span class="accent-text">.</span><br />
+          <span class="text-muted">Wiki</span>
+        </h1>
+        <p class="lede mt-7 max-w-2xl">
+          {site.description ??
+            '面向中国互联网亚文化人物「李文亚」（网称「李文亚教授」）的百科站点，以归档视频的多模态理解结果为主源。'}
+        </p>
+        <div class="mt-9 flex flex-wrap items-center gap-3">
+          <a href="/videos" class="btn btn-primary">
+            进入视频库
+            <span aria-hidden="true">→</span>
+          </a>
+          <a href="/theories" class="btn btn-ghost">浏览理论体系</a>
+          <a href="/about" class="btn btn-ghost">方法论与声明</a>
+        </div>
+        <p class="mono mt-7 text-xs tracking-[0.16em] text-muted-dim uppercase">
+          数据版本 {updatedAt} · 全部内容可回溯到「视频 + 时间码」
+        </p>
+      </div>
+
+      <aside class="reveal card card-pad lg:mb-2">
+        <div class="flex items-center justify-between">
+          <span class="field-label">归档概览 / Archive</span>
+          <span class="chip chip-accent">示例数据</span>
+        </div>
+        <div class="mt-4">
+          {specRows.map((r) => (
+            <div class="spec-row">
+              <span class="spec-key">{r.key}</span>
+              <span class="spec-val mono">{r.val}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
+
+    <div class="shell pb-14">
+      <StatBar
+        items={[
+          { value: formatNumber(stats.videos), unit: '个', label: '归档视频', note: '核心本体 + 番外系列' },
+          { value: String(stats.hours), unit: '小时', label: '视频总时长', note: '平均约 8.5 分钟 / 个' },
+          { value: formatNumber(stats.entities), unit: '条', label: '人物与理论实体', note: '含别名与关系图' },
+          { value: formatNumber(stats.events), unit: '个', label: '事件节点', note: '2024-11 至今' },
+          { value: formatNumber(stats.glossary), unit: '条', label: '梗与术语', note: '支持首字母筛选' },
+        ]}
+      />
+    </div>
+  </section>
+
+  <!-- ===================== 导航卡片 ===================== -->
+  <section class="section shell" id="explore">
+    <SectionHeading
+      eyebrow="Explore"
+      title="六个入口，读完整个文亚宇宙"
+      desc="每个页面都从同一份数据契约生成：实体带别名与出处，事件带时间码，视频带逐场景理解结果。"
+      href="/search"
+      linkLabel="直接搜索"
+    />
+
+    <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {navCards.map((c) => (
+        <a href={c.href} class="card card-pad group reveal min-h-[210px]">
+          <div class="flex items-start justify-between">
+            <span class="mono text-xs tracking-[0.3em] text-muted-dim">{c.index}</span>
+            <span class="card-arrow text-lg">→</span>
+          </div>
+          <h3 class="mt-6 text-xl font-extrabold tracking-tight">{c.title}</h3>
+          <p class="mono mt-1 text-xs text-accent-bright">{c.count}</p>
+          <p class="mt-3 text-sm leading-7 text-muted">{c.desc}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <!-- ===================== 精选视频 ===================== -->
+  <section class="section-tight shell" id="featured">
+    <SectionHeading
+      eyebrow="Featured"
+      title="精选视频"
+      desc="优先展示已产出场景卡、缩略图或 B 站来源的条目；点开任意视频可查看逐场景的画面、台词、声音与画面文字。"
+      href="/videos"
+      linkLabel={'全部 ' + formatNumber(stats.videos) + ' 个视频'}
+    />
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {featured.map((v) => <VideoCard video={v} />)}
+    </div>
+    {featured.length === 0 && <EmptyState title="暂无精选视频" desc="videos.json 为空或所有条目缺少必要字段。" />}
+  </section>
+
+  <!-- ===================== 最新事件 + 系列分布 ===================== -->
+  <section class="section shell" id="timeline-preview">
+    <SectionHeading
+      eyebrow="Timeline"
+      title="最新事件"
+      desc="事件按日期分组，每个节点都可回到具体视频与时间码。"
+      href="/timeline"
+      linkLabel="完整年表"
+    />
+
+    <div class="mt-12 grid gap-10 lg:grid-cols-[1.4fr_0.6fr]">
+      <div>
+        <TimelineList items={eventsPreview} showYear />
+      </div>
+
+      <aside class="space-y-5">
+        <div class="card card-flat card-pad reveal">
+          <h3 class="field-label">系列分布</h3>
+          <ul class="mt-4 space-y-3.5">
+            {series.map((s) => (
+              <li>
+                <div class="flex items-baseline justify-between gap-3 text-sm">
+                  <span class="truncate text-[#d7dae1]" title={s.name}>{s.name}</span>
+                  <span class="mono shrink-0 text-xs text-muted">{formatNumber(s.count)} · {s.hours}h</span>
+                </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <div
+                    class="h-full rounded-full bg-gradient-to-r from-accent to-accent-bright"
+                    style={'width: ' + Math.max(3, Math.round((s.count / maxSeries) * 100)) + '%'}
+                  >
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="card card-flat card-pad reveal">
+          <h3 class="field-label">参考来源</h3>
+          <ul class="mt-4 space-y-2.5 text-sm">
+            {sources.map((s) => (
+              <li>
+                {s.href ? (
+                  <a href={s.href} class="link-underline text-muted hover:text-white" target="_blank" rel="noopener nofollow">
+                    {s.label} ↗
+                  </a>
+                ) : (
+                  <span class="text-muted">{s.label}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <a href="/sources" class="btn btn-ghost btn-sm mt-5 w-full">来源与采集说明</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================== 声明 CTA ===================== -->
+  <section class="shell pb-20">
+    <div class="reveal relative overflow-hidden rounded-[16px] border border-line bg-ink-850 p-8 md:p-12">
+      <div class="grid-texture pointer-events-none absolute inset-0 opacity-40" aria-hidden="true"></div>
+      <div class="relative max-w-3xl">
+        <span class="eyebrow">Disclaimer</span>
+        <h2 class="mt-4 text-2xl font-extrabold tracking-tight md:text-3xl">中立记录，逐条溯源</h2>
+        <p class="lede mt-4">
+          本站是爱好者的档案整理项目，不是对任何主张的背书：视频中的指控、理论与自述均按「当事人陈述」记录并标注出处；
+          涉及真实人物时只描述其在归档视频中的呈现，不作事实认定。不收录住址、联系方式、健康与医疗等私密信息。
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="/about" class="btn btn-primary">阅读免责与隐私声明</a>
+          <a href="/sources" class="btn btn-ghost">查看数据来源</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

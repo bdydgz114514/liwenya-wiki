@@ -1,0 +1,47 @@
+---
+import { formatDuration, titleParts, type Video } from '../lib/data';
+
+interface Props {
+  video: Video;
+  compact?: boolean;
+  showTags?: boolean;
+}
+const { video, compact = false, showTags = true } = Astro.props;
+const parts = titleParts(video);
+const tags = (video.tags ?? []).slice(0, compact ? 2 : 4);
+const href = '/videos/' + video.id;
+---
+
+<a href={href} class="card group" data-video-card>
+  <div class="thumb">
+    {video.thumb ? (
+      <img src={video.thumb} alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-80" />
+    ) : (
+      <span class="thumb-idx" aria-hidden="true">{parts.index}</span>
+    )}
+    <span class="thumb-play" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" class="translate-x-[1px] text-white">
+        <path d="M8 5v14l11-7z"></path>
+      </svg>
+    </span>
+    <span class="absolute top-3 left-3 z-2 flex flex-wrap gap-1.5">
+      {video.series && <span class="chip chip-accent">{video.series}</span>}
+      {video.bilibili && <span class="chip">B 站</span>}
+    </span>
+    <span class="chip absolute right-3 bottom-3 z-2">{formatDuration(video.duration)}</span>
+  </div>
+
+  <div class="card-pad flex flex-1 flex-col gap-3">
+    <h3 class="card-title line-clamp-2">{parts.main}</h3>
+    {!compact && video.summary && <p class="line-clamp-2 text-sm leading-7 text-muted">{video.summary}</p>}
+    {showTags && tags.length > 0 && (
+      <div class="mt-auto flex flex-wrap gap-1.5 pt-1">
+        {tags.map((t) => <span class="chip">{t}</span>)}
+      </div>
+    )}
+    <div class="mt-auto flex items-center justify-between pt-1 text-xs text-muted-dim">
+      <span class="mono">{video.date || parts.dateLabel || '日期未知'}</span>
+      <span class="card-arrow text-sm">查看场景 →</span>
+    </div>
+  </div>
+</a>

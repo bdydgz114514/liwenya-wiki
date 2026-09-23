@@ -1,0 +1,45 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import PageHero from '../components/PageHero.astro';
+import TimelineList from '../components/TimelineList.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { events, eventsByYear, formatNumber, updatedAt } from '../lib/data';
+
+const groups = eventsByYear();
+const years = groups.map((g) => g.year);
+---
+
+<BaseLayout title="事件年表" description="按年份分组的李文亚视频归档事件时间线，每个节点可回溯到具体视频与时间码。" searchType="事件">
+  <PageHero
+    eyebrow="Timeline"
+    title="事件年表"
+    desc="从 2024 年 11 月的第一个归档视频，到「推翻」系列的集中发布、与网友的往复争论、番外采访系列与最新归档进度。事件以月份为最小刻度，均可回到具体视频。"
+    meta={[formatNumber(events.length) + ' 个事件节点', years.length + ' 个年份', '数据版本 ' + updatedAt]}
+  >
+    <div class="mt-8 flex flex-wrap gap-2">
+      {years.map((y) => <a href={'#year-' + y} class="chip chip-btn mono">{y}</a>)}
+    </div>
+  </PageHero>
+
+  <div class="shell section space-y-16">
+    {groups.length === 0 ? (
+      <EmptyState title="事件数据为空" desc="events.json 为空数组或所有条目缺少 id。" />
+    ) : (
+      groups.map((g) => (
+        <section id={'year-' + g.year} class="scroll-mt-28">
+          <div class="reveal flex items-end justify-between gap-6 border-b border-line pb-5">
+            <h2 class="display-sm mono">{g.year}</h2>
+            <span class="chip">{formatNumber(g.items.length)} 个节点</span>
+          </div>
+          <div class="mt-8">
+            <TimelineList items={g.items} />
+          </div>
+        </section>
+      ))
+    )}
+
+    <p class="text-sm text-muted-dim">
+      说明：年表依据归档视频的标题日期、上传批次与转写内容整理；日期字段为「年-月」粒度时不做更细的推断。
+    </p>
+  </div>
+</BaseLayout>

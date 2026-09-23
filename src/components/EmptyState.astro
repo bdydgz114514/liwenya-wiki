@@ -1,0 +1,12 @@
+---
+interface Props {
+  title?: string;
+  desc?: string;
+}
+const { title = '暂无数据', desc = '该条目在当前数据集中没有可展示的内容。' } = Astro.props;
+---
+
+<div class="empty-state">
+  <p class="text-base font-bold text-chalk">{title}</p>
+  <p class="mt-2 text-sm">{desc}</p>
+</div>

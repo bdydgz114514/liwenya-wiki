@@ -1,0 +1,240 @@
+---
+import EmptyState from '../../components/EmptyState.astro';
+import SceneTimeline from '../../components/SceneTimeline.astro';
+import SourceList from '../../components/SourceList.astro';
+import VideoCard from '../../components/VideoCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import {
+  formatDuration,
+  neighbors,
+  peopleOfVideo,
+  personName,
+  sameSeries,
+  theoriesOfVideo,
+  titleParts,
+  videoById,
+  videos,
+} from '../../lib/data';
+
+export function getStaticPaths() {
+  return videos.map((v) => ({ params: { id: v.id }, props: { video: v } }));
+}
+
+const { video } = Astro.props;
+const v = videoById.get(video.id) ?? video;
+const parts = titleParts(v);
+const scenes = v.scenes ?? [];
+const people = peopleOfVideo(v);
+const theories = theoriesOfVideo(v);
+const related = sameSeries(v, 3);
+const { prev, next } = neighbors(v);
+const bilibili = v.bilibili ? 'https://www.bilibili.com/video/' + v.bilibili : undefined;
+const specRows = [
+  { key: '编号', val: '#' + v.id },
+  { key: '系列', val: v.series || '未归类' },
+  { key: '时长', val: formatDuration(v.duration) },
+  { key: '日期', val: v.date || parts.dateLabel || '未知' },
+  { key: '分辨率', val: v.meta?.width && v.meta?.height ? v.meta.width + ' × ' + v.meta.height : '—' },
+  { key: '视频编码', val: v.meta?.vcodec || '—' },
+  { key: '音频编码', val: v.meta?.acodec || '—' },
+  { key: '场景卡', val: scenes.length + ' 个场景' },
+];
+---
+
+<BaseLayout
+  title={parts.main}
+  description={(v.summary ?? '归档视频条目').slice(0, 120)}
+  searchType="视频"
+  searchSeries={v.series}
+>
+  <section class="hero-surface">
+    <div class="shell pt-[calc(var(--header-h)+3rem)] pb-12 md:pt-[calc(var(--header-h)+4rem)]">
+      <nav class="mono text-xs text-muted-dim" aria-label="面包屑">
+        <a href="/videos" class="hover:text-white">视频库</a>
+        <span class="mx-2">/</span>
+        <span class="text-muted">{v.id}</span>
+      </nav>
+
+      <div class="mt-6 grid gap-10 lg:grid-cols-[1.4fr_0.85fr] lg:items-start">
+        <div class="reveal">
+          <div class="flex flex-wrap items-center gap-2">
+            {v.series && <span class="chip chip-accent">{v.series}</span>}
+            <span class="chip mono">#{parts.index}</span>
+            {v.bilibili && <span class="chip">B 站 {v.bilibili}</span>}
+          </div>
+          <h1 class="display-sm mt-5 text-shadow-hero balance">{parts.main}</h1>
+          <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+            <span class="mono">{formatDuration(v.duration)}</span>
+            <span class="mono">{v.date || parts.dateLabel || '日期未知'}</span>
+            <span class="mono">{scenes.length} 个场景卡</span>
+          </div>
+          {(v.tags ?? []).length > 0 && (
+            <div class="mt-5 flex flex-wrap gap-1.5">
+              {(v.tags ?? []).map((t) => (
+                <a href={'/videos?tag=' + encodeURIComponent(t)} class="chip chip-btn">{t}</a>
+              ))}
+            </div>
+          )}
+          {v.summary && <p class="lede mt-7 line-clamp-4">{v.summary}</p>}
+          <div class="accent-rule mt-8"></div>
+        </div>
+
+        <aside class="reveal card card-pad">
+          <h2 class="field-label">元数据</h2>
+          <div class="mt-3">
+            {specRows.map((r) => (
+              <div class="spec-row">
+                <span class="spec-key">{r.key}</span>
+                <span class="spec-val mono">{r.val}</span>
+              </div>
+            ))}
+          </div>
+          {v.relpath && (
+            <div class="mt-5">
+              <span class="field-label">来源路径</span>
+              <div class="mt-2 flex items-start gap-2">
+                <code class="mono min-w-0 flex-1 overflow-x-auto rounded-lg border border-line bg-ink-950 px-3 py-2 text-xs text-muted">{v.relpath}</code>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm shrink-0"
+                  data-copy={v.relpath}
+                  aria-label="复制来源路径">复制</button>
+              </div>
+              <p class="mt-2 text-xs text-muted-dim">本地归档路径，仅用于说明数据来源；文件本身不对外分发。</p>
+            </div>
+          )}
+          {bilibili && (
+            <a href={bilibili} target="_blank" rel="noopener nofollow" class="btn btn-ghost btn-sm mt-5 w-full">
+              在哔哩哔哩查看 ↗
+            </a>
+          )}
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <div class="shell section grid gap-10 lg:grid-cols-[1.5fr_0.75fr]">
+    <div class="space-y-10">
+      <section class="reveal">
+        <h2 class="field-label">视频摘要</h2>
+        {v.summary ? (
+          <p class="prose-block mt-4 text-base leading-8">{v.summary}</p>
+        ) : (
+          <div class="mt-4"><EmptyState title="暂无摘要" desc="该视频在数据集中未提供 summary 字段，等待流水线生成。" /></div>
+        )}
+      </section>
+
+      <section id="scenes">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span class="eyebrow">Scene-by-scene</span>
+            <h2 class="h-section mt-3">逐场景理解结果</h2>
+          </div>
+          <span class="chip mono">{scenes.length} 个场景</span>
+        </div>
+        <p class="lede mt-4 max-w-3xl">
+          每个场景卡由 ASR 台词、VLM 画面描述、OCR 画面文字与音频标签对齐生成，时间码可回溯到原始视频。
+        </p>
+        <div class="mt-8">
+          <SceneTimeline scenes={scenes} />
+        </div>
+      </section>
+
+      {theories.length > 0 && (
+        <section>
+          <h2 class="field-label">本视频涉及的理论</h2>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {theories.map((t) => (
+              <a href={'/theories/' + t.id} class="chip chip-btn chip-accent">{t.name ?? t.id}</a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {related.length > 0 && (
+        <section>
+          <h2 class="field-label">同系列视频</h2>
+          <div class="mt-5 grid gap-5 sm:grid-cols-2">
+            {related.map((r) => <VideoCard video={r} compact />)}
+          </div>
+        </section>
+      )}
+
+      <nav class="flex items-center justify-between gap-4 border-t border-line pt-6 text-sm">
+        {prev ? (
+          <a href={'/videos/' + prev.id} class="text-muted hover:text-white">← 上一个：{titleParts(prev).main.slice(0, 18)}</a>
+        ) : <span></span>}
+        {next ? (
+          <a href={'/videos/' + next.id} class="text-right text-muted hover:text-white">下一个：{titleParts(next).main.slice(0, 18)} →</a>
+        ) : <span></span>}
+      </nav>
+    </div>
+
+    <aside class="space-y-5">
+      <div class="sticky-aside space-y-5">
+        <div class="card card-flat card-pad reveal">
+          <h2 class="field-label">涉及人物</h2>
+          {people.length === 0 ? (
+            <p class="mt-3 text-sm text-muted">场景卡中没有人物标注，也没有其他条目引用该视频。</p>
+          ) : (
+            <ul class="mt-4 space-y-2 text-sm">
+              {people.map((p) => (
+                <li>
+                  <a href={'/people/' + p.id} class="link-underline text-[#d7dae1] hover:text-white">{personName(p.id)}</a>
+                  {p.type && <span class="dim ml-2 text-xs">{p.type}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <SourceList
+          sources={[
+            { title: '本地归档视频 #' + v.id + '（' + (v.series || '未归类') + '）' },
+            ...(v.bilibili ? [{ title: '哔哩哔哩 ' + v.bilibili, url: 'https://www.bilibili.com/video/' + v.bilibili }] : []),
+          ]}
+          title="来源与出处"
+        />
+
+        <div class="card card-flat card-pad reveal">
+          <h2 class="field-label">引用本视频</h2>
+          <p class="mono mt-3 text-xs leading-6 text-muted">
+            {parts.main}（视频 #{v.id}，{formatDuration(v.duration)}）．李文亚 Wiki．
+            {Astro.site ? new URL('/videos/' + v.id, Astro.site).href : '/videos/' + v.id}
+          </p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // 复制来源路径 + 通过 ?t=秒数 定位场景
+    document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const text = btn.dataset.copy || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = '已复制';
+        } catch {
+          btn.textContent = '复制失败';
+        }
+        setTimeout(() => (btn.textContent = '复制'), 1600);
+      });
+    });
+
+    const t = parseFloat(new URLSearchParams(location.search).get('t') || '');
+    if (isFinite(t)) {
+      const scenes = Array.from(document.querySelectorAll<HTMLElement>('[data-scene]'));
+      const hit = scenes.find((el) => {
+        const t0 = parseFloat(el.dataset.t0 || 'NaN');
+        const t1 = parseFloat(el.dataset.t1 || 'NaN');
+        return isFinite(t0) && isFinite(t1) && t >= t0 && t <= t1;
+      });
+      if (hit) {
+        hit.classList.add('is-visible');
+        hit.style.borderColor = 'rgba(226,58,46,0.75)';
+        hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  </script>
+</BaseLayout>

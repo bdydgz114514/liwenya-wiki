@@ -1,0 +1,285 @@
+---
+import PageHero from '../components/PageHero.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatNumber, stats, updatedAt } from '../lib/data';
+
+const types = ['全部', '视频', '人物', '理论', '事件', '词条'];
+---
+
+<BaseLayout
+  title="站内搜索"
+  description="搜索李文亚 Wiki 的视频、人物、理论、事件与词条；本地 JSON 索引即时匹配，Pagefind 提供全文检索。"
+>
+  <PageHero
+    eyebrow="Search"
+    title="站内搜索"
+    desc="本地索引（标题 / 摘要 / 别名 / 系列 / 标签）在浏览器内即时匹配，支持中文子串；需要深入正文与场景卡时，使用下方的 Pagefind 全文检索。查询词不会离开你的浏览器。"
+    meta={[formatNumber(stats.videos) + ' 个视频', formatNumber(stats.entities) + ' 条实体', '数据版本 ' + updatedAt]}
+  />
+
+  <div class="shell section">
+    <div class="reveal card card-pad">
+      <label class="block">
+        <span class="field-label">关键词</span>
+        <input
+          id="site-q"
+          type="search"
+          class="input mt-2 text-base"
+          placeholder="例如：地球的运动轨迹 / 话疗 / 孙笑川 / 黑体"
+          autocomplete="off"
+        />
+      </label>
+
+      <div class="mt-5 flex flex-wrap gap-1.5" role="group" aria-label="内容类型筛选">
+        {types.map((t, i) => (
+          <button class="chip chip-btn" data-type={t} aria-pressed={i === 0 ? 'true' : 'false'}>{t}</button>
+        ))}
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <p class="mono text-xs text-muted-dim">
+          <span id="site-count" class="text-chalk">0</span> 条匹配 · 本地索引共 <span id="site-total" class="text-chalk">0</span> 条
+        </p>
+        <div class="flex flex-wrap gap-1.5">
+          {['万有引力', '地球的运动轨迹', '黑体', '话疗', '孙笑川', '诺委会'].map((k) => (
+            <button class="chip chip-btn" data-quick={k}>{k}</button>
+          ))}
+          <button id="site-reset" type="button" class="chip chip-btn">重置</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="site-results" class="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
+
+    <div id="site-empty" class="empty-state mt-8 hidden">
+      <p class="text-base font-bold text-chalk">没有找到匹配内容</p>
+      <p class="mt-2 text-sm">试试更短的关键词（中文两三个字即可），或切换内容类型。</p>
+    </div>
+
+    <section class="mt-16">
+      <SectionHeading
+        eyebrow="Full-text"
+        title="全文检索"
+        desc="Pagefind 索引在构建期生成，覆盖条目正文与视频场景卡（画面描述、台词、画面文字）。若索引不可用，上方本地索引仍然可用。"
+      />
+      <div id="pagefind-host" class="mt-8 hidden">
+        <div id="pagefind-search"></div>
+      </div>
+      <div id="pagefind-missing" class="empty-state mt-8 hidden">
+        <p class="text-base font-bold text-chalk">全文索引不可用</p>
+        <p class="mx-auto mt-2 max-w-2xl text-sm">
+          当前构建未生成 dist/pagefind/（Pagefind 未安装或执行失败）。本地 JSON 索引（上方）已覆盖标题、摘要、别名、系列与标签的检索，
+          执行 <code class="mono">npm run build</code> 会在构建后自动重建全文索引。
+        </p>
+      </div>
+    </section>
+
+    <div class="mt-16 grid gap-5 md:grid-cols-3">
+      <a href="/videos" class="card card-pad reveal">
+        <h3 class="text-base font-bold">视频库</h3>
+        <p class="mt-2 text-sm text-muted">按系列、标签与关键词筛选全部 {formatNumber(stats.videos)} 个视频。</p>
+      </a>
+      <a href="/glossary" class="card card-pad reveal">
+        <h3 class="text-base font-bold">梗词典</h3>
+        <p class="mt-2 text-sm text-muted">按首字母或关键词检索术语与迷因。</p>
+      </a>
+      <a href="/timeline" class="card card-pad reveal">
+        <h3 class="text-base font-bold">事件年表</h3>
+        <p class="mt-2 text-sm text-muted">按年份浏览事件节点，回到具体视频与时间码。</p>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    type IndexItem = { title: string; url: string; type: string; desc: string; meta: string };
+
+    // 支持子路径部署（如 GitHub Pages 的 /liwenya-wiki/）
+    const BASE = import.meta.env.BASE_URL;
+
+    const qInput = document.getElementById('site-q') as HTMLInputElement | null;
+    const resultsEl = document.getElementById('site-results');
+    const emptyEl = document.getElementById('site-empty');
+    const countEl = document.getElementById('site-count');
+    const totalEl = document.getElementById('site-total');
+    const resetBtn = document.getElementById('site-reset');
+    const typeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-type]'));
+    const pagefindHost = document.getElementById('pagefind-host');
+    const pagefindMissing = document.getElementById('pagefind-missing');
+
+    let index: IndexItem[] = [];
+    let activeType = '全部';
+
+    const esc = (s: unknown) =>
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+    // 无关键词时按类型轮流取样，避免首屏被视频条目占满
+    const pickDefault = (pool: IndexItem[]) => {
+      const order = ['人物', '理论', '事件', '词条', '视频'];
+      const buckets = new Map<string, IndexItem[]>();
+      for (const it of pool) {
+        if (!buckets.has(it.type)) buckets.set(it.type, []);
+        buckets.get(it.type)!.push(it);
+      }
+      const out: IndexItem[] = [];
+      let added = true;
+      let round = 0;
+      while (added && out.length < 60) {
+        added = false;
+        for (const type of order) {
+          const list = buckets.get(type);
+          if (list && list[round]) {
+            out.push(list[round]);
+            added = true;
+          }
+        }
+        round += 1;
+      }
+      return out.slice(0, 60);
+    };
+
+    const render = () => {
+      const q = (qInput?.value ?? '').trim().toLowerCase();
+      const filtered = index
+        .filter((it) => (activeType === '全部' ? true : it.type === activeType))
+        .filter((it) => (!q ? true : (it.title + ' ' + it.desc + ' ' + it.meta + ' ' + it.type).toLowerCase().includes(q)));
+      const hits = q ? filtered.slice(0, 60) : pickDefault(filtered);
+
+      if (countEl) countEl.textContent = String(hits.length);
+      if (totalEl) totalEl.textContent = String(index.length);
+      if (resultsEl) {
+        resultsEl.innerHTML = hits
+          .map(
+            (it) =>
+              '<a href="' + esc(it.url) + '" class="card card-pad">' +
+                '<div class="flex items-start justify-between gap-3">' +
+                  '<h3 class="text-base font-bold">' + esc(it.title) + '</h3>' +
+                  '<span class="chip shrink-0">' + esc(it.type) + '</span>' +
+                '</div>' +
+                (it.desc ? '<p class="mt-3 line-clamp-3 text-sm leading-7 text-muted">' + esc(it.desc) + '</p>' : '') +
+                (it.meta ? '<p class="mono mt-3 text-xs text-muted-dim">' + esc(it.meta) + '</p>' : '') +
+              '</a>'
+          )
+          .join('');
+      }
+      const none = hits.length === 0;
+      emptyEl?.classList.toggle('hidden', !none);
+      resultsEl?.classList.toggle('hidden', none);
+    };
+
+    const syncUrl = () => {
+      const q = qInput?.value ?? '';
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (activeType !== '全部') params.set('type', activeType);
+      const qs = params.toString();
+      history.replaceState(null, '', qs ? '/search?' + qs : '/search');
+    };
+
+    const initPagefind = () =>
+      new Promise<boolean>((resolve) => {
+        const PF = (window as unknown as { PagefindUI?: new (opts: Record<string, unknown>) => unknown }).PagefindUI;
+        if (!PF) return resolve(false);
+        try {
+          new PF({
+            element: '#pagefind-search',
+            bundlePath: BASE + 'pagefind/',
+            showSubResults: true,
+            showImages: false,
+            showFilters: true,
+            translations: {
+              placeholder: '全文检索：场景卡台词、画面描述、条目正文…',
+              zero_results: '全文索引中没有与 [SEARCH_TERM] 相关的内容',
+              many_results: '全文索引：找到 [COUNT] 条与 [SEARCH_TERM] 相关的内容',
+              one_result: '全文索引：找到 [COUNT] 条与 [SEARCH_TERM] 相关的内容',
+              searching: '搜索中…',
+              load_more: '加载更多结果',
+              clear_search: '清除',
+            },
+          });
+          resolve(true);
+        } catch {
+          resolve(false);
+        }
+      });
+
+    const bootPagefind = async () => {
+      if (location.protocol === 'file:') {
+        pagefindMissing?.classList.remove('hidden');
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        const s = document.createElement('script');
+        s.src = BASE + 'pagefind/pagefind-ui.js';
+        s.onload = () => resolve();
+        s.onerror = () => resolve();
+        document.head.appendChild(s);
+        setTimeout(resolve, 2500);
+      });
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = BASE + 'pagefind/pagefind-ui.css';
+      document.head.appendChild(link);
+
+      const ok = await initPagefind();
+      pagefindHost?.classList.toggle('hidden', !ok);
+      pagefindMissing?.classList.toggle('hidden', ok);
+      if (!ok) return;
+      const input = document.querySelector<HTMLInputElement>('#pagefind-search input[type=text], #pagefind-search input[type=search]');
+      const q = qInput?.value ?? '';
+      if (q && input) {
+        input.value = q;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    };
+
+    qInput?.addEventListener('input', () => {
+      render();
+      syncUrl();
+    });
+    typeButtons.forEach((btn) =>
+      btn.addEventListener('click', () => {
+        activeType = btn.dataset.type ?? '全部';
+        typeButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        render();
+        syncUrl();
+      })
+    );
+    document.querySelectorAll<HTMLElement>('[data-quick]').forEach((el) =>
+      el.addEventListener('click', () => {
+        if (qInput) qInput.value = el.dataset.quick ?? '';
+        render();
+        syncUrl();
+      })
+    );
+    resetBtn?.addEventListener('click', () => {
+      if (qInput) qInput.value = '';
+      activeType = '全部';
+      typeButtons.forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.type ?? '') === '全部')));
+      render();
+      syncUrl();
+    });
+
+    const boot = async () => {
+      const params = new URLSearchParams(location.search);
+      const q = params.get('q');
+      const type = params.get('type');
+      if (q && qInput) qInput.value = q;
+      if (type) {
+        activeType = type;
+        typeButtons.forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.type ?? '') === type)));
+      }
+      try {
+        const res = await fetch(BASE + 'search-index.json');
+        const data = await res.json();
+        index = Array.isArray(data?.items) ? data.items : [];
+      } catch {
+        index = [];
+      }
+      render();
+      void bootPagefind();
+    };
+
+    void boot();
+  </script>
+</BaseLayout>
