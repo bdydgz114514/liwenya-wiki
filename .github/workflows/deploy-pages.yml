@@ -1,11 +1,21 @@
 name: Deploy site to GitHub Pages
 
-# 由仓库源码自动构建并发布到 bdydgz114514.github.io：
-# 之前是手工构建后把 dist/ 推进 Pages 仓库，容易出现「线上产物落后于源码」
-# （例如线上 /film 还是占位骨架、CSS 哈希指向已不存在的文件）。
+# 默认只手动触发（workflow_dispatch）。
+#
+# 为什么不是 push 自动发布：本站当前的发布路径是「本地构建 → 产物推到
+# bdydgz114514/bdydgz114514.github.io 仓库（branch 源）」，本仓库的 Pages 源
+# 并不是 “GitHub Actions”。在那种设置下 actions/deploy-pages 必然失败
+# （build 成功、deploy 报 Pages site not found / source 不匹配），
+# 每次 push 都会留一条红色记录。
+#
+# 如果你想改成由本仓库自动发布：
+#   1. 打开此 workflow，取消注释下面的 push 触发器；
+#   2. 仓库 Settings → Pages → Build and deployment → Source 选择 “GitHub Actions”；
+#   3. 注意站点地址会变成 https://bdydgz114514.github.io/liwenya-wiki/（子路径），
+#      而当前所有链接都是根路径绝对路径，需要给 astro.config.mjs 配 base 才能正常显示。
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
