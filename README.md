@@ -196,7 +196,7 @@ cd /root/dsh/liwenya-kb/site && npm run preview
 |---|---|
 | `/` | hero（超大标题 + 归档概览参数卡）+ 数据条（1193 / 168.6h / 实体 / 事件 / 词条）+ 六个导航卡片 + 精选视频 + 最新事件 + 系列分布 + 免责 CTA |
 | `/people` `/people/:id` | 人物志分组列表；详情含摘要、别名、关联视频、相关事件、关系图、来源、引用格式 |
-| `/theories` `/theories/:id` | 理论卡片列表；详情含概述、详细整理、证据锚点（视频 + 时间码）、相关视频、关系图 |
+| `/theories` `/theories/:id` | 理论卡片列表（含「教科书级讲解 + 3D」标识）；详情为**两段式栅格**：概述 / 详细整理 ｜ 关系图 → **教科书级讲解（全宽，含 3D 模型演示）** → 证据锚点 / 相关视频 ｜ 来源与出处 / 其他理论 |
 | `/timeline` | 按年份分组的事件年表（年份锚点导航 + 月级时间线 + 视频/来源芯片） |
 | `/glossary` | 梗词典：关键词搜索 + A–Z 首字母筛选 + 来源链接 |
 | `/videos` `/videos/:id` | 视频库：关键词 / 系列 / 标签 / 排序 + 加载更多；详情含摘要、逐场景理解结果时间轴、元数据、来源路径（可复制）、同系列与前后导航 |
@@ -207,7 +207,21 @@ cd /root/dsh/liwenya-kb/site && npm run preview
 
 ---
 
-## 7. 声明
+## 7. 教科书级讲解与 3D 模型演示
+
+| 项 | 说明 |
+|---|---|
+| 数据 | `src/data/textbook.json`（由 `../kb/export/textbook.json` 同步，生成脚本 `../scripts/gen_textbook_p1.py`、`gen_textbook_p2.py`、`gen_textbook_p3.py`） |
+| 结构 | 每个理论一个条目：`intro` + `sections[{h, p[], list[], table[{a,b,c}]}]` + `formulas[{tex,note}]` + `model3d{kind,caption}` |
+| 渲染 | `src/components/TheoryTextbook.astro`（分节卡片 + 三列对照表 + 公式块），插在「关系图」与「来源与出处」之间，桌面端为跨两列的全宽 band（`lg:col-span-2 lg:row-start-2`） |
+| 3D | `src/components/TheoryModel3D.astro`（three.js + OrbitControls，按 `kind` 分发场景：`triple_shell` / `particle_flow` / `earth_trapezoid` / `sun_scale` / `energy_law` / `microbe_body` / `leaf_stomata` / `math_surface`），独立懒加载 chunk（约 550 KB），不依赖 CDN |
+| 写作口径 | 主张陈述与主流科学结论逐条对照（三列表格）、附「可检验性判据」与「本站不作真实性背书」的中立声明；健康类条目附风险提示 |
+
+> 排版注意：右栏含长 URL（来源列表）时必须给轨道加 `minmax(0, …)` 并给链接加 `min-w-0 break-all`，否则长链接会把网格列撑爆（详见 `../docs/LESSONS.md` 第 33 条）。
+
+---
+
+## 8. 声明
 
 站点内容为爱好者档案整理，**非官方、非营利**，与当事人无隶属关系；视频中的主张与指控按
 「当事人陈述」记录并标注出处，不构成事实认定。隐私声明：不收录住址、联系方式、证件、健康与医疗等私密信息。
