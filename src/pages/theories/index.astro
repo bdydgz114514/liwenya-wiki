@@ -2,12 +2,12 @@
 import EmptyState from '../../components/EmptyState.astro';
 import PageHero from '../../components/PageHero.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { formatNumber, resolveSources, theories, updatedAt, videoById } from '../../lib/data';
+import { formatNumber, resolveSources, textbookOfTheory, theories, updatedAt, videoById } from '../../lib/data';
 
 const cards = theories.map((t) => {
   const evidence = (t.evidence ?? []).filter((e) => e && e.videoId);
   const videos = evidence.map((e) => videoById.get(e.videoId!)).filter(Boolean);
-  return { t, evidence, videos, sources: resolveSources(t.sources) };
+  return { t, evidence, videos, sources: resolveSources(t.sources), textbook: textbookOfTheory(t.id) };
 });
 const totalEvidence = cards.reduce((s, c) => s + c.evidence.length, 0);
 ---
@@ -16,7 +16,7 @@ const totalEvidence = cards.reduce((s, c) => s + c.evidence.length, 0);
   <PageHero
     eyebrow="Theories"
     title="理论体系"
-    desc="把归档视频中反复出现的自创说法整理成条目。每条理论都标注证据来源（视频编号 + 时间码）与参考 wiki，便于逐条回溯；本站只做整理与转述，不做真伪认定。"
+    desc="把归档视频中反复出现的自创说法整理成条目。每条理论都标注证据来源（视频编号 + 时间码）与参考 wiki，便于逐条回溯；理论页另附教科书级讲解（定义、假设、机制、与主流科学结论的逐条对照表、可检验性判据）与可交互 3D 模型演示。本站只做整理与转述，不做真伪认定。"
     meta={[formatNumber(theories.length) + ' 条理论', formatNumber(totalEvidence) + ' 处证据锚点', '数据版本 ' + updatedAt]}
   />
 
@@ -25,7 +25,7 @@ const totalEvidence = cards.reduce((s, c) => s + c.evidence.length, 0);
       <EmptyState title="理论数据为空" desc="theories.json 为空数组或所有条目缺少 id。" />
     ) : (
       <div class="grid gap-5 md:grid-cols-2">
-        {cards.map(({ t, evidence, videos, sources }) => (
+        {cards.map(({ t, evidence, videos, sources, textbook }) => (
           <a href={'/theories/' + t.id} class="card card-pad reveal">
             <div class="flex items-start justify-between gap-4">
               <h2 class="text-xl font-extrabold tracking-tight">{t.name ?? t.id}</h2>
@@ -38,6 +38,7 @@ const totalEvidence = cards.reduce((s, c) => s + c.evidence.length, 0);
             <div class="mt-5 flex flex-wrap gap-1.5">
               <span class="chip chip-accent">{formatNumber(evidence.length)} 处证据</span>
               <span class="chip">{formatNumber(videos.length)} 个视频</span>
+              {textbook && <span class="chip">教科书级讲解{textbook.model3d ? ' + 3D' : ''}</span>}
               {sources.slice(0, 2).map((s) => <span class="chip">{s.label}</span>)}
             </div>
           </a>
