@@ -218,6 +218,8 @@ cd /root/dsh/liwenya-kb/site && npm run preview
 | 写作口径 | 主张陈述与主流科学结论逐条对照（三列表格）、附「可检验性判据」与「本站不作真实性背书」的中立声明；健康类条目附风险提示 |
 
 > 排版注意：右栏含长 URL（来源列表）时必须给轨道加 `minmax(0, …)` 并给链接加 `min-w-0 break-all`，否则长链接会把网格列撑爆（详见 `../docs/LESSONS.md` 第 33 条）。
+>
+> 部署注意：站点资源在 `_astro/`，**GitHub Pages 默认 Jekyll 会忽略下划线目录**（表现为 HTML 正常、CSS/JS 全 404）。仓库内 `public/.nojekyll`（空文件）会随构建进入产物根目录，务必保留；其他静态托管（帽子云 / Cloudflare Pages / OSS）不需要但也不受影响。
 
 ---
 
