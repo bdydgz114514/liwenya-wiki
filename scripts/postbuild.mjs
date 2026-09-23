@@ -16,6 +16,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE = path.resolve(__dirname, '..');
 const DIST = path.join(SITE, 'dist');
 
+// 视频库是否公开（与 src/lib/data.ts 的 siteConfig.videoLibraryLive 保持一致）。
+// 关闭时：Pagefind 不索引 /videos/ 目录，避免 1206 个视频详情页从全文检索里被翻出来。
+function videoLibraryLive() {
+  try {
+    const site = JSON.parse(readFileSync(path.join(SITE, 'src', 'data', 'site.json'), 'utf8'));
+    return site?.features?.videoLibraryLive !== false;
+  } catch { return true; }
+}
+const VIDEO_LIVE = videoLibraryLive();
+
 /**
  * 解析 pagefind 可执行入口。
  * 不能直接用 node_modules/.bin/pagefind：那是 POSIX shell 脚本，
@@ -78,7 +88,10 @@ let pagefindOk = false;
 const pf = resolvePagefind();
 if (pf) {
   try {
-    const out = execFileSync(pf.cmd, [...pf.args, '--site', DIST, '--output-subdir', 'pagefind'], {
+    // 视频库未公开时，/videos/ 的页面在布局里带了 data-pagefind-ignore，pagefind 会自动跳过
+    // （--exclude-selectors 只能排除元素，不能排除整页，所以标记写在页面上）。
+    const args = [...pf.args, '--site', DIST, '--output-subdir', 'pagefind'];
+    const out = execFileSync(pf.cmd, args, {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 15 * 60 * 1000,
@@ -86,6 +99,7 @@ if (pf) {
     const tail = out.trim().split('\n').slice(-6).join('\n');
     if (tail) console.log(tail);
     pagefindOk = existsSync(path.join(DIST, 'pagefind', 'pagefind.js'));
+    if (!VIDEO_LIVE) console.log('[postbuild] 视频库未公开：/videos/ 页面带 data-pagefind-ignore，不进入全文索引。');
   } catch (err) {
     console.warn('[postbuild] Pagefind 执行失败，将使用 JSON 兜底搜索：' + (err && err.message ? err.message : err));
   }

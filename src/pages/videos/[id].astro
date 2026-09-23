@@ -11,6 +11,7 @@ import {
   peopleOfVideo,
   personName,
   sameSeries,
+  siteConfig,
   theoriesOfVideo,
   titleParts,
   videoById,
@@ -47,6 +48,7 @@ const specRows = [
   description={(v.summary ?? '归档视频条目').slice(0, 120)}
   searchType="视频"
   searchSeries={v.series}
+  noindex={!siteConfig.videoLibraryLive}
 >
   <section class="hero-surface">
     <div class="shell pt-[calc(var(--header-h)+3rem)] pb-12 md:pt-[calc(var(--header-h)+4rem)]">

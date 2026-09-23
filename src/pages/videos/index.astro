@@ -1,19 +1,224 @@
 ---
-// 视频库：整库暂不公开，先给占位页。
-// 原列表页（关键词 / 系列 / 标签筛选 + 缩略图网格 + 加载更多）备份在
-// D:\ai\gongzuoqu\kb\wiki-check\backup-videos-index.astro，
-// 要恢复时把它覆盖回本文件即可（数据 src/data/videos.json 一直保留着）。
-//
-// 说明：/videos/<id> 详情页当前仍会生成，因为首页「精选视频」、事件年表、
-// 理论详情、长篇传记的出处链接都指向它们；若也要一并下架，需同时改这四处引用。
-import BaseLayout from '../../layouts/BaseLayout.astro';
+// 视频库：由 src/data/site.json 的 features.videoLibraryLive 控制。
+//   false（当前）→ 只渲染「敬请期待」占位页
+//   true         → 渲染完整列表页（关键词 / 系列 / 标签筛选 + 缩略图网格 + 加载更多）
+// 完整版代码在下面的 LIVE 分支；同一份备份见 wiki-check/backup-videos-index.astro。
+
+import EmptyState from '../../components/EmptyState.astro';
+import PageHero from '../../components/PageHero.astro';
+import VideoCard from '../../components/VideoCard.astro';
 import ComingSoon from '../../components/ComingSoon.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { allTags, formatNumber, seriesList, site, siteConfig, slimVideos, stats, updatedAt, videos } from '../../lib/data';
+
+const INITIAL = 24;
+const initialVideos = videos.slice(0, INITIAL);
+const series = seriesList();
+const tags = allTags(30);
+const payload = JSON.stringify(slimVideos()).replace(/</g, '\\u003c');
 ---
 
+{siteConfig.videoLibraryLive ? (
+<BaseLayout title="视频库" description="1193 个归档视频的索引：标题、时长、系列、标签与逐场景理解结果，支持搜索与组合筛选。" searchType="视频" noindex={!siteConfig.videoLibraryLive}>
+  <PageHero
+    eyebrow="Video Library"
+    title="视频库"
+    desc="全量归档索引。缩略图为占位块（原始 MKV 不出站），点开任意视频可查看摘要、逐场景理解结果与来源路径。首次进入默认展示前 24 条，使用筛选或「加载更多」浏览全部。"
+    meta={[
+      formatNumber(stats.videos) + ' 个视频',
+      stats.hours + ' 小时',
+      series.length + ' 个系列',
+      '数据版本 ' + updatedAt,
+    ]}
+  />
+
+  <div class="shell section">
+    <!-- 筛选器 -->
+    <form id="video-filters" class="reveal card card-pad" onsubmit="return false">
+      <div class="grid gap-4 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+        <label class="block">
+          <span class="field-label">关键词</span>
+          <input id="vf-q" type="search" class="input mt-2" placeholder="标题 / 摘要 / 标签 / 编号，例如：万有引力" autocomplete="off" />
+        </label>
+        <label class="block">
+          <span class="field-label">系列</span>
+          <select id="vf-series" class="input mt-2">
+            <option value="">全部系列</option>
+            {series.map((s) => <option value={s.name}>{s.name}（{s.count}）</option>)}
+          </select>
+        </label>
+        <label class="block">
+          <span class="field-label">标签</span>
+          <select id="vf-tag" class="input mt-2">
+            <option value="">全部标签</option>
+            {tags.map((t) => <option value={t.tag}>{t.tag}（{t.count}）</option>)}
+          </select>
+        </label>
+        <label class="block">
+          <span class="field-label">排序</span>
+          <select id="vf-sort" class="input mt-2">
+            <option value="index">按编号</option>
+            <option value="long">时长从长到短</option>
+            <option value="short">时长从短到长</option>
+            <option value="scenes">场景卡数量</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <p class="mono text-xs text-muted-dim">
+          匹配 <span id="vf-count" class="text-chalk">{formatNumber(videos.length)}</span> / {formatNumber(videos.length)} 个视频
+        </p>
+        <div class="flex items-center gap-2">
+          <button type="button" id="vf-reset" class="btn btn-ghost btn-sm">重置筛选</button>
+          <a href="/search" class="btn btn-ghost btn-sm">全文搜索</a>
+        </div>
+      </div>
+    </form>
+
+    <div id="video-grid" class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {initialVideos.map((v) => <VideoCard video={v} />)}
+    </div>
+
+    <div id="vf-empty" class="empty-state mt-10 hidden">
+      <p class="text-base font-bold text-chalk">没有匹配的视频</p>
+      <p class="mt-2 text-sm">试试更短的关键词，或切换系列 / 标签筛选条件。</p>
+    </div>
+
+    {videos.length === 0 && <EmptyState title="视频数据为空" desc="videos.json 为空数组或所有条目缺少 id。" />}
+
+    <div class="mt-10 flex justify-center">
+      <button type="button" id="vf-more" class="btn btn-ghost hidden">加载更多</button>
+    </div>
+  </div>
+
+  <script type="application/json" id="video-index-data" is:inline set:html={payload}></script>
+
+  <script>
+    type Slim = { id: string; t: string; n: string; s: string; d: number | null; y: string; g: string[]; b: number; c: number; x: string };
+
+    const dataEl = document.getElementById('video-index-data');
+    const all: Slim[] = JSON.parse(dataEl?.textContent || '[]');
+    const grid = document.getElementById('video-grid');
+    const emptyBox = document.getElementById('vf-empty');
+    const moreBtn = document.getElementById('vf-more');
+    const countEl = document.getElementById('vf-count');
+    const qInput = document.getElementById('vf-q') as HTMLInputElement | null;
+    const seriesSel = document.getElementById('vf-series') as HTMLSelectElement | null;
+    const tagSel = document.getElementById('vf-tag') as HTMLSelectElement | null;
+    const sortSel = document.getElementById('vf-sort') as HTMLSelectElement | null;
+    const resetBtn = document.getElementById('vf-reset');
+    const PAGE = 24;
+
+    let shown = PAGE;
+
+    const esc = (s: unknown) =>
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+    const fmtDur = (sec: number | null) => {
+      if (typeof sec !== 'number' || !isFinite(sec) || sec <= 0) return '时长未知';
+      const s = Math.round(sec);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      if (h > 0) return h + ' 小时 ' + m + ' 分';
+      if (m > 0) return m + ' 分 ' + String(s % 60).padStart(2, '0') + ' 秒';
+      return s + ' 秒';
+    };
+
+    const card = (v: Slim) => {
+      const tags = (v.g || []).slice(0, 4).map((t) => '<span class="chip">' + esc(t) + '</span>').join('');
+      const chips =
+        (v.s ? '<span class="chip chip-accent">' + esc(v.s) + '</span>' : '') +
+        (v.b ? '<span class="chip">B 站</span>' : '');
+      return (
+        '<a href="/videos/' + encodeURIComponent(v.id) + '" class="card group">' +
+          '<div class="thumb">' +
+            '<span class="thumb-idx" aria-hidden="true">' + esc(v.n) + '</span>' +
+            '<span class="thumb-play" aria-hidden="true">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" class="translate-x-[1px] text-white"><path d="M8 5v14l11-7z"></path></svg>' +
+            '</span>' +
+            '<span class="absolute top-3 left-3 z-2 flex flex-wrap gap-1.5">' + chips + '</span>' +
+            '<span class="chip absolute right-3 bottom-3 z-2">' + esc(fmtDur(v.d)) + '</span>' +
+          '</div>' +
+          '<div class="card-pad flex flex-1 flex-col gap-3">' +
+            '<h3 class="card-title line-clamp-2">' + esc(v.t || ('视频 ' + v.id)) + '</h3>' +
+            (v.x ? '<p class="line-clamp-2 text-sm leading-7 text-muted">' + esc(v.x) + '</p>' : '') +
+            (tags ? '<div class="mt-auto flex flex-wrap gap-1.5 pt-1">' + tags + '</div>' : '') +
+            '<div class="mt-auto flex items-center justify-between pt-1 text-xs text-muted-dim">' +
+              '<span class="mono">' + esc(v.y || '日期未知') + '</span>' +
+              '<span class="card-arrow text-sm">查看场景 →</span>' +
+            '</div>' +
+          '</div>' +
+        '</a>'
+      );
+    };
+
+    const readUrl = () => {
+      const p = new URLSearchParams(location.search);
+      if (qInput && p.get('q')) qInput.value = p.get('q') as string;
+      if (seriesSel && p.get('series')) seriesSel.value = p.get('series') as string;
+      if (tagSel && p.get('tag')) tagSel.value = p.get('tag') as string;
+      if (sortSel && p.get('sort')) sortSel.value = p.get('sort') as string;
+    };
+
+    const apply = () => {
+      const q = (qInput?.value || '').trim().toLowerCase();
+      const s = seriesSel?.value || '';
+      const t = tagSel?.value || '';
+      const sort = sortSel?.value || 'index';
+
+      let list = all.filter((v) => {
+        if (s && v.s !== s) return false;
+        if (t && !(v.g || []).includes(t)) return false;
+        if (q) {
+          const hay = (v.t + ' ' + v.x + ' ' + v.id + ' ' + v.n + ' ' + v.s + ' ' + (v.g || []).join(' ')).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      if (sort === 'long') list = list.slice().sort((a, b) => (b.d || 0) - (a.d || 0));
+      else if (sort === 'short') list = list.slice().sort((a, b) => (a.d || 0) - (b.d || 0));
+      else if (sort === 'scenes') list = list.slice().sort((a, b) => (b.c || 0) - (a.c || 0));
+
+      if (countEl) countEl.textContent = String(list.length);
+      if (grid) grid.innerHTML = list.slice(0, shown).map(card).join('');
+      const none = list.length === 0;
+      emptyBox?.classList.toggle('hidden', !none);
+      grid?.classList.toggle('hidden', none);
+      if (moreBtn) moreBtn.classList.toggle('hidden', list.length <= shown);
+    };
+
+    [qInput, seriesSel, tagSel, sortSel].forEach((el) =>
+      el?.addEventListener('input', () => {
+        shown = PAGE;
+        apply();
+      })
+    );
+    moreBtn?.addEventListener('click', () => {
+      shown += PAGE * 2;
+      apply();
+    });
+    resetBtn?.addEventListener('click', () => {
+      if (qInput) qInput.value = '';
+      if (seriesSel) seriesSel.value = '';
+      if (tagSel) tagSel.value = '';
+      if (sortSel) sortSel.value = 'index';
+      shown = PAGE;
+      history.replaceState(null, '', location.pathname);
+      apply();
+    });
+
+    readUrl();
+    if (all.length) apply();
+  </script>
+</BaseLayout>
+) : (
 <BaseLayout
   title="视频库"
   description="李文亚 Wiki · 视频库板块筹备中，敬请期待。"
   searchType="视频"
+  noindex={!siteConfig.videoLibraryLive}
 >
   <ComingSoon
     eyebrow="Video Library"
@@ -31,3 +236,4 @@ import ComingSoon from '../../components/ComingSoon.astro';
     ]}
   />
 </BaseLayout>
+)}

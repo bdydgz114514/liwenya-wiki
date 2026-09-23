@@ -9,5 +9,8 @@
   "glossary": 20,
   "bilibili": 13
  },
+ "features": {
+  "videoLibraryLive": false
+ },
  "updatedAt": "2026-09-23 12:20"
 }

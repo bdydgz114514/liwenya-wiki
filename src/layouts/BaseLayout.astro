@@ -11,8 +11,10 @@ interface Props {
   searchType?: string;
   /** Pagefind 过滤器：系列名（仅视频页） */
   searchSeries?: string;
+  /** 为 true 时整页标记 data-pagefind-ignore：Pagefind 不索引本页（视频库未公开时使用） */
+  noindex?: boolean;
 }
-const { title, description, searchType, searchSeries } = Astro.props;
+const { title, description, searchType, searchSeries, noindex = false } = Astro.props;
 const fullTitle = title ? title + ' · ' + siteTitle : siteTitle + ' · ' + siteTagline;
 const desc =
   description ??
@@ -21,7 +23,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : As
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-pagefind-ignore={noindex ? '' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -1,0 +1,74 @@
+name: Build check
+
+# 每次 push 都验证站点能构建、产物自洽。
+# 目的：杜绝「线上产物落后于源码」——以前是手工 build 后把 dist 推进 Pages 仓库，
+# 结果线上 /film 还是旧占位页、HTML 还引用着已不存在的 _astro/*.css。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          SITE_URL: https://bdydgz114514.github.io
+
+      - name: Check build output
+        run: |
+          set -e
+          test -f dist/.nojekyll || { echo "::error::缺少 dist/.nojekyll（Pages 的 Jekyll 会忽略 _astro/，CSS/JS 全 404）"; exit 1; }
+          test -f dist/index.html || { echo "::error::缺少 dist/index.html"; exit 1; }
+          test -f dist/search-index.json || { echo "::error::缺少 dist/search-index.json"; exit 1; }
+          test -f dist/sitemap.xml || { echo "::error::缺少 dist/sitemap.xml"; exit 1; }
+          test -f dist/pagefind/pagefind.js || echo "::warning::pagefind 索引未生成，/search 将退化为 JSON 兜底"
+          echo "HTML 页面数：$(find dist -name '*.html' | wc -l)"
+
+          # /kb/ 的下载文件不在源码仓库里（public/kb/ 被 .gitignore 排除），
+          # 需要在构建后额外拷进 dist/kb/。CI 里没有这些文件，只提示不失败。
+          if [ ! -d dist/kb ]; then
+            echo "::warning::dist/kb 不存在：/kb 页面的下载链接在线上会是 404（部署时需把知识库导出拷进 dist/kb/）"
+          fi
+
+          # 产物里的站内绝对路径是否有悬空引用（排除 /kb/ 这种部署时补的目录）
+          node - <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const DIST = 'dist';
+          const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); e.isDirectory() ? walk(p, out) : out.push(p); } return out; };
+          const all = walk(DIST);
+          const files = new Set(all.map(f => '/' + path.relative(DIST, f).split(path.sep).join('/')));
+          const dirs = new Set(['/']);
+          for (const f of files) if (f.endsWith('/index.html')) dirs.add(f.slice(0, -'/index.html'.length) || '/');
+          const missing = new Map();
+          for (const h of all.filter(f => f.endsWith('.html'))) {
+            const t = fs.readFileSync(h, 'utf8');
+            for (const m of t.matchAll(/(?:href|src|poster)="([^"]*)"/g)) {
+              const raw = m[1];
+              if (!raw.startsWith('/') || raw.startsWith('//') || raw === '/') continue;
+              if (/['+`]/.test(raw)) continue;
+              const clean = raw.split('?')[0].split('#')[0];
+              if (clean.startsWith('/kb/')) continue; // 部署时补入
+              if (files.has(clean) || dirs.has(clean.replace(/\/$/, '') || '/')) continue;
+              missing.set(clean, (missing.get(clean) || 0) + 1);
+            }
+          }
+          if (missing.size) {
+            console.log('悬空引用：');
+            for (const [k, v] of [...missing].sort()) console.log(`  ${k} (${v} 处)`);
+            process.exit(1);
+          }
+          console.log('产物站内引用自洽 ✓');
+          NODE

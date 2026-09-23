@@ -1,0 +1,62 @@
+name: Deploy site to GitHub Pages
+
+# 由仓库源码自动构建并发布到 bdydgz114514.github.io：
+# 之前是手工构建后把 dist/ 推进 Pages 仓库，容易出现「线上产物落后于源码」
+# （例如线上 /film 还是占位骨架、CSS 哈希指向已不存在的文件）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (astro build + pagefind index)
+        run: npm run build
+        env:
+          SITE_URL: https://bdydgz114514.github.io
+
+      - name: Sanity check the build output
+        run: |
+          test -f dist/.nojekyll || { echo "缺少 dist/.nojekyll：Pages 的 Jekyll 会忽略 _astro/"; exit 1; }
+          test -f dist/index.html || { echo "缺少 dist/index.html"; exit 1; }
+          test -f dist/search-index.json || { echo "缺少 dist/search-index.json"; exit 1; }
+          if [ ! -f dist/pagefind/pagefind.js ]; then
+            echo "::warning::pagefind 索引未生成，/search 将退化为 JSON 兜底搜索"
+          fi
+          echo "HTML 页面数：$(find dist -name '*.html' | wc -l)"
+          du -sh dist
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

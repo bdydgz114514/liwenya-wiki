@@ -96,6 +96,8 @@ export interface SiteInfo {
   stats?: { videos?: number; hours?: number; entities?: number; events?: number; glossary?: number };
   sources?: SourceRef[];
   updatedAt?: string;
+  /** 板块开关：videoLibraryLive=false 时视频库按「筹备中」占位处理（详情页不索引、搜索索引不含视频） */
+  features?: { videoLibraryLive?: boolean; filmLive?: boolean };
 }
 
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -115,6 +117,16 @@ export const stats = {
   glossary: site.stats?.glossary ?? 0,
 };
 export const updatedAt = str(site.updatedAt, '—');
+
+/**
+ * 板块开关（默认全开，关闭时按「筹备中」处理）。
+ * 目前视频库未公开：列表页是占位页，详情页标记 data-pagefind-ignore，
+ * 且 /search-index.json 与 sitemap 都不再收录视频条目。
+ */
+export const siteConfig = {
+  videoLibraryLive: site.features?.videoLibraryLive !== false,
+  filmLive: site.features?.filmLive !== false,
+};
 
 /* ------------------------------------------------------------------ */
 /* 集合（过滤掉缺少 id 的脏数据，保证列表页不会崩）                     */

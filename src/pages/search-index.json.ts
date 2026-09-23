@@ -5,6 +5,7 @@ import {
   glossary,
   novelChapters,
   people,
+  siteConfig,
   theories,
   titleParts,
   videos,
@@ -13,19 +14,24 @@ import {
 /**
  * 构建期生成的本地搜索索引（Pagefind 不可用时的兜底）。
  * 输出：/search-index.json
+ *
+ * 视频库未公开（siteConfig.videoLibraryLive === false）时不收录视频条目：
+ * 否则列表页虽是占位页，1206 个视频详情页仍会从搜索里被翻出来。
  */
 export const GET: APIRoute = () => {
   const items = [
-    ...videos.map((v) => {
-      const t = titleParts(v);
-      return {
-        title: t.main,
-        url: '/videos/' + v.id,
-        type: '视频',
-        desc: v.summary ?? '',
-        meta: ['#' + v.id, v.series ?? '未归类', formatDuration(v.duration), t.dateLabel].filter(Boolean).join(' · '),
-      };
-    }),
+    ...(siteConfig.videoLibraryLive
+      ? videos.map((v) => {
+          const t = titleParts(v);
+          return {
+            title: t.main,
+            url: '/videos/' + v.id,
+            type: '视频',
+            desc: v.summary ?? '',
+            meta: ['#' + v.id, v.series ?? '未归类', formatDuration(v.duration), t.dateLabel].filter(Boolean).join(' · '),
+          };
+        })
+      : []),
     ...people.map((p) => ({
       title: p.name ?? p.id,
       url: '/people/' + p.id,
