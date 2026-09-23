@@ -1,0 +1,146 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatNumber, stats, updatedAt } from '../lib/data';
+
+const files = [
+  { name: 'liwenya_kb.sqlite', size: '4.6 MB', desc: '知识库主库：asset / transcript / scene / entity / relation / doc / chunk + FTS5 全文索引，可直接用 SQLite 打开' },
+  { name: 'faiss.index', size: '13.6 MB', desc: '语义检索索引（3472 × 1024 维，内积），配合 embeddings.npy 使用' },
+  { name: 'embeddings.npy', size: '13.6 MB', desc: '检索块向量矩阵（jina-embeddings-v3，float32）' },
+  { name: 'chunk_ids.json', size: '20 KB', desc: '向量行号 → chunk_id 的映射' },
+  { name: 'export/', size: '1.8 MB', desc: '站点数据契约：videos / people / theories / events / glossary / graph / textbook / novel / film / bilibili' },
+  { name: 'transcripts.zip', size: '1.8 MB', desc: '1206 个视频的逐段转写（.jsonl：asset_id、起止秒、文本）' },
+  { name: 'cards.zip', size: '3.7 MB', desc: '场景卡与视频摘要（.json：场景、台词、画面描述、OCR、人物、标签）' },
+  { name: 'README.md', size: '3.6 KB', desc: '知识库说明与数据字典' },
+  { name: '设计说明.md', size: '6.6 KB', desc: '总体方案：L0–L7 五层流水线与技术选型' },
+  { name: '经验教训.md', size: '16 KB', desc: '工程经验（50 条）：踩过的坑与决策依据' },
+  { name: '声音克隆说明.md', size: '3.9 KB', desc: '「AI 李文亚」RVC v2 声音克隆全流程与客观评测' },
+];
+
+const pipeline = [
+  { k: 'L0–L2', t: '资产索引与转写', d: 'ffprobe 建索引；Whisper large-v3 转写（VAD 只跑语音段 + 时间戳回填），得到带时间码的台词，并过滤模板幻觉。' },
+  { k: 'L3–L4', t: '画面理解', d: 'PySceneDetect 场景切分 → 关键帧 → Qwen3-VL-8B 结构化描述（场景 / 人物 / 动作 / 画面文字 / 风格 / 情绪），OCR 补画面文字。' },
+  { k: 'L5', t: '融合成卡', d: '按场景把台词、画面、文字、人物合成「场景卡」，再由本地 Qwen3-8B 生成视频级摘要与人物 / 理论 / 梗标签。' },
+  { k: 'L6–L7', t: '知识化与检索', d: '入库 SQLite（FTS5 全文）+ FAISS（语义）+ 实体关系图；所有结论都带 video_id + 时间码，可逐条回溯。' },
+];
+---
+
+<BaseLayout
+  title="知识库"
+  description="李文亚知识库：1206 个视频（170 小时）的可溯源多模态归档与知识化成果，含 SQLite 主库、语义检索索引、转写与场景卡数据下载。"
+  searchType="知识库"
+>
+  <div class="shell section">
+    <nav class="mono text-xs text-muted-dim" aria-label="面包屑">
+      <a href="/" class="hover:text-white">首页</a><span class="mx-2">/</span><span class="text-muted">知识库</span>
+    </nav>
+
+    <header class="reveal mt-6">
+      <span class="eyebrow">Knowledge Base</span>
+      <h1 class="display-sm mt-4 text-shadow-hero">李文亚知识库</h1>
+      <p class="mt-5 max-w-3xl text-base leading-8 text-muted">
+        把 {formatNumber(stats.videos)} 个归档视频（约 {stats.hours} 小时）逐视频「看懂」之后得到的可溯源多模态知识库：
+        听（转写）→ 看（画面理解）→ 读（画面文字）→ 融合（场景卡与摘要）→ 入库（全文 + 语义 + 实体关系）。
+        本页是知识库的入口：可以下载全部数据，也可以按下面的说明直接检索。
+      </p>
+      <div class="mt-6 flex flex-wrap gap-1.5">
+        <span class="chip chip-accent">{formatNumber(stats.videos)} 个视频</span>
+        <span class="chip">{stats.hours} 小时</span>
+        <span class="chip mono">26143 转写片段</span>
+        <span class="chip mono">18315 关键帧</span>
+        <span class="chip mono">1246 文档 / 3472 检索块</span>
+        <span class="chip mono">80 实体 / 100 关系</span>
+      </div>
+      <div class="accent-rule mt-8"></div>
+    </header>
+
+    <section class="mt-10 reveal">
+      <h2 class="field-label">五层流水线</h2>
+      <div class="mt-5 grid gap-4 md:grid-cols-2">
+        {pipeline.map((p) => (
+          <div class="card card-flat card-pad">
+            <div class="flex items-center gap-2">
+              <span class="chip chip-accent mono">{p.k}</span>
+              <b class="text-sm text-[#e9ebf0]">{p.t}</b>
+            </div>
+            <p class="mt-3 text-sm leading-7 text-muted">{p.d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-12 reveal">
+      <h2 class="field-label">下载</h2>
+      <p class="mt-3 text-sm text-muted">
+        全部文件均为脱敏后的副本（住址、证件、电话、病历等信息在落库前已替换为「已隐去」）。
+      </p>
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="text-left text-muted">
+              <th class="border-b border-white/10 py-2 pr-4">文件</th>
+              <th class="border-b border-white/10 py-2 pr-4">大小</th>
+              <th class="border-b border-white/10 py-2">用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            {files.map((f) => (
+              <tr>
+                <td class="border-b border-white/5 py-2 pr-4">
+                  <a class="link-underline mono text-[#d7dae1] hover:text-white" href={'/kb/' + f.name}>{f.name}</a>
+                </td>
+                <td class="border-b border-white/5 py-2 pr-4 text-muted-dim">{f.size}</td>
+                <td class="border-b border-white/5 py-2 text-muted">{f.desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 text-xs text-muted-dim">
+        也可以整仓库获取：<a class="link-underline text-[#d7dae1]" href="https://github.com/bdydgz114514/liwenya-kb" target="_blank" rel="noopener">github.com/bdydgz114514/liwenya-kb ↗</a>
+      </p>
+    </section>
+
+    <section class="mt-12 grid gap-5 md:grid-cols-2">
+      <div class="card card-flat card-pad reveal">
+        <h2 class="field-label">快速使用</h2>
+        <pre class="mt-4 overflow-x-auto rounded-lg border border-line bg-ink-950 p-4 text-[12px] leading-6 text-[#c9cfda]"><code>{'# 1) 全文检索（SQLite FTS5，无需任何依赖）\nsqlite3 liwenya_kb.sqlite \\\n  "select d.title, c.text from chunk c join doc d on d.id=c.doc_id \\n   where c.rowid in (select rowid from chunk_fts where chunk_fts match \'黑体生物\') limit 5;"\n\n# 2) 语义检索（FAISS + 向量）\npython scripts/kb.py query --text "黑体生物 延寿"\n\n# 3) 按视频查转写片段\npython movie/tools/kb_lookup.py 电线 --limit 8\npython movie/tools/kb_lookup.py --video 603'}</code></pre>
+        <p class="mt-3 text-xs leading-6 text-muted-dim">
+          检索块与向量一一对应：<code class="mono">embeddings.npy</code> 的第 i 行 = <code class="mono">chunk_ids.json</code> 的第 i 个 chunk_id。
+        </p>
+      </div>
+      <div class="card card-flat card-pad reveal">
+        <h2 class="field-label">引用与出处</h2>
+        <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
+          <li>· 每条结论都带 <code class="mono">video_id + 时间码</code>，可在站内视频页跳转核对；</li>
+          <li>· 参考 wiki（wiki.liwenya.com / wenyaverse.fandom.com 等）的采集原文与来源日志在仓库 <code class="mono">sources/wiki_refs/</code>；</li>
+          <li>· 主张与指控一律按「当事人陈述」记录，本站不作事实认定；</li>
+          <li>· B 站视频版权归原作者，仓库仅保留元数据与链接。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card card-flat card-pad reveal mt-12">
+      <h2 class="field-label">隐私与合规</h2>
+      <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
+        <li>· 落库前用正则与人工复核剔除住址、证件、电话、病历与用药等私密信息（共处理 157 个文件）；</li>
+        <li>· 不对任何主张作真实性背书，不用于骚扰、冒充或误导性传播；</li>
+        <li>· 数据仅用于个人资料归档、亚文化研究与社会现象观察。</li>
+      </ul>
+    </section>
+
+    <section class="mt-12 reveal">
+      <h2 class="field-label">站内其他入口</h2>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <a href="/videos" class="chip chip-btn">视频库（1206 个视频）</a>
+        <a href="/theories" class="chip chip-btn">理论体系（含教科书级讲解）</a>
+        <a href="/timeline" class="chip chip-btn">事件年表（38 条）</a>
+        <a href="/glossary" class="chip chip-btn">梗词典</a>
+        <a href="/people" class="chip chip-btn">人物志</a>
+        <a href="/novel" class="chip chip-btn">长篇传记（30 章）</a>
+        <a href="/film" class="chip chip-btn">电影</a>
+        <a href="/sources" class="chip chip-btn">来源与流程</a>
+      </div>
+      <p class="mt-4 text-xs text-muted-dim">数据版本 {updatedAt}</p>
+    </section>
+  </div>
+</BaseLayout>

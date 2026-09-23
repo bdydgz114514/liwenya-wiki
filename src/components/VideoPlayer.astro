@@ -1,0 +1,100 @@
+---
+// 档案视频播放器：B 站有源就内嵌官方播放器；否则连本机档案转码服务（默认同主机 8896 端口）。
+import { type Video } from '../lib/data';
+
+interface Props { video: Video }
+const { video } = Astro.props;
+const bilibili = (video.bilibili || '').trim();
+---
+
+<div class="card card-flat card-pad reveal" data-archive-player data-video-id={video.id}>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="field-label">观看</h2>
+    <span class="mono text-[11px] text-muted-dim" data-media-state>检查档案服务…</span>
+  </div>
+
+  {bilibili && (
+    <div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+      <iframe
+        src={'//player.bilibili.com/player.html?bvid=' + bilibili + '&autoplay=0&high_quality=1'}
+        class="block h-[420px] w-full"
+        scrolling="no"
+        frameborder="0"
+        allowfullscreen="true"
+        title={'B 站视频 ' + bilibili}
+      ></iframe>
+    </div>
+  )}
+
+  <div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+    <video class="block w-full bg-black" controls preload="none" playsinline data-archive-video></video>
+  </div>
+
+  <p class="mt-3 text-xs leading-6 text-muted-dim" data-media-hint>
+    档案原件是 AV1 + Opus 的 MKV，浏览器不能直接播放。本机若已开启档案转码服务
+    （<code class="mono">movie/tools/media_server.py</code>，默认 8896 端口），这里会自动接上并实时转码播放；
+    否则请在实例的「自定义服务」里放行 8896 端口，或点下方按钮手动指定地址。
+  </p>
+  <div class="mt-3 flex flex-wrap items-center gap-2">
+    <button class="chip chip-btn" data-media-config type="button">指定转码服务地址</button>
+    {bilibili && <a class="chip chip-btn" href={'https://www.bilibili.com/video/' + bilibili} target="_blank" rel="noopener nofollow">在 B 站打开 ↗</a>}
+  </div>
+</div>
+
+<script>
+  const MEDIA_KEY = 'dsh-media-base';
+
+  function baseFor(): string {
+    const q = new URLSearchParams(location.search).get('media');
+    if (q) { localStorage.setItem(MEDIA_KEY, q); return q.replace(/\/$/, ''); }
+    const saved = localStorage.getItem(MEDIA_KEY);
+    if (saved) return saved.replace(/\/$/, '');
+    return '';
+  }
+
+  async function pickBase(): Promise<string> {
+    const saved = baseFor();
+    const candidates = [saved, location.origin, '//' + location.hostname + ':8896', 'http://127.0.0.1:8896']
+      .filter((v, i, arr) => v && arr.indexOf(v) === i);
+    for (const base of candidates) {
+      try {
+        const r = await fetch(base + '/health', { cache: 'no-store', mode: 'cors' });
+        const j = await r.json();
+        if (j && j.ok) return base;
+      } catch (e) { /* 试下一个 */ }
+    }
+    return saved || candidates[0];
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-archive-player]').forEach((box) => {
+    const id = box.dataset.videoId || '';
+    const video = box.querySelector<HTMLVideoElement>('[data-archive-video]');
+    const state = box.querySelector<HTMLElement>('[data-media-state]');
+    const hint = box.querySelector<HTMLElement>('[data-media-hint]');
+    const cfg = box.querySelector<HTMLElement>('[data-media-config]');
+    if (!video) return;
+
+    const connect = async () => {
+      const base = await pickBase();
+      try {
+        const r = await fetch(base + '/health', { cache: 'no-store', mode: 'cors' });
+        const j = await r.json();
+        if (!j || !j.ok) throw new Error('bad');
+        video.src = base + '/video/' + id + '?t=0';
+        if (state) state.textContent = '档案服务已连接 · ' + base + ' · 共 ' + j.videos + ' 个视频';
+        if (hint) hint.hidden = true;
+      } catch (e) {
+        if (state) state.textContent = '未连接档案服务（' + (base || location.origin) + '）';
+        if (hint) hint.hidden = false;
+      }
+    };
+
+    cfg?.addEventListener('click', () => {
+      const cur = baseFor();
+      const v = prompt('档案转码服务地址（例如 http://127.0.0.1:8896 或服务映射地址）', cur);
+      if (v) { localStorage.setItem(MEDIA_KEY, v.replace(/\/$/, '')); connect(); }
+    });
+
+    connect();
+  });
+</script>

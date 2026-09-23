@@ -11,3 +11,5 @@ models/
 !voice/cover/*.m4a
 .github_token
 .credentials*
+public/kb/
+public/film/

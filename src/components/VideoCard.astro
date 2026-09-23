@@ -1,5 +1,5 @@
 ---
-import { formatDuration, titleParts, type Video } from '../lib/data';
+import { formatDuration, thumbUrl, titleParts, type Video } from '../lib/data';
 
 interface Props {
   video: Video;
@@ -14,8 +14,8 @@ const href = '/videos/' + video.id;
 
 <a href={href} class="card group" data-video-card>
   <div class="thumb">
-    {video.thumb ? (
-      <img src={video.thumb} alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-80" />
+    {thumbUrl(video) ? (
+      <img src={thumbUrl(video)} alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-80" />
     ) : (
       <span class="thumb-idx" aria-hidden="true">{parts.index}</span>
     )}

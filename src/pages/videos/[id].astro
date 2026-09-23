@@ -3,6 +3,7 @@ import EmptyState from '../../components/EmptyState.astro';
 import SceneTimeline from '../../components/SceneTimeline.astro';
 import SourceList from '../../components/SourceList.astro';
 import VideoCard from '../../components/VideoCard.astro';
+import VideoPlayer from '../../components/VideoPlayer.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import {
   formatDuration,
@@ -77,6 +78,9 @@ const specRows = [
           )}
           {v.summary && <p class="lede mt-7 line-clamp-4">{v.summary}</p>}
           <div class="accent-rule mt-8"></div>
+          <div class="mt-8">
+            <VideoPlayer video={v} />
+          </div>
         </div>
 
         <aside class="reveal card card-pad">

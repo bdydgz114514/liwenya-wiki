@@ -1,0 +1,151 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import {
+  getVideo,
+  novelChapterById,
+  novelChapters,
+  novelMeta,
+  novelNeighbors,
+  novelReadingMinutes,
+  videoTitle,
+} from '../../lib/data';
+
+export function getStaticPaths() {
+  return novelChapters.map((c) => ({ params: { id: c.id }, props: { chapter: c } }));
+}
+
+const { chapter } = Astro.props;
+const c = novelChapterById.get(chapter.id) ?? chapter;
+const { prev, next } = novelNeighbors(c.no);
+const volume = (novelMeta.volumes ?? []).find((v) => v.no === c.volume);
+const volumeChapters = novelChapters.filter((x) => x.volume === c.volume);
+const sources = (c.videos ?? []).map((id) => ({ id, video: getVideo(id) })).slice(0, 24);
+---
+
+<BaseLayout
+  title={'第' + c.no + '章　' + (c.title ?? '')}
+  description={(c.epigraph || c.title || '李文亚传') + ' · 《李文亚传》第' + c.no + '章，据归档视频自述材料重述。'}
+  searchType="传记"
+>
+  <div class="shell section grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,17rem)]">
+    <article class="min-w-0">
+      <nav class="mono text-xs text-muted-dim" aria-label="面包屑">
+        <a href="/novel" class="hover:text-white">长篇传记</a>
+        <span class="mx-2">/</span>
+        <span class="text-muted">第{c.no}章</span>
+      </nav>
+
+      <header class="reveal mt-6 border-b border-line pb-8">
+        <span class="eyebrow">卷{c.volume}　{c.volumeTitle}</span>
+        <h1 class="display-sm mt-4 text-shadow-hero">第{c.no}章　{c.title}</h1>
+        {c.epigraph && <p class="mt-5 border-l-2 border-accent/60 pl-4 text-[15px] leading-8 text-[#c9cfda]">{c.epigraph}</p>}
+        <div class="mt-6 flex flex-wrap gap-1.5">
+          <span class="chip">{c.sections?.length ?? 0} 节</span>
+          <span class="chip">{c.chars} 字</span>
+          <span class="chip">约 {novelReadingMinutes(c)} 分钟</span>
+          {sources.length > 0 && <span class="chip chip-accent">{sources.length} 条视频出处</span>}
+        </div>
+      </header>
+
+      <div class="novel-body mt-10">
+        {(c.sections ?? []).map((s, i) => (
+          <section class="mb-10">
+            <h2 class="mb-5 text-[15px] font-bold tracking-wide text-[#e9ebf0]">
+              <span class="mono mr-2 text-xs text-accent">{String(i + 1).padStart(2, '0')}</span>{s.title}
+            </h2>
+            {(s.paras ?? []).map((p) => <p>{p}</p>)}
+          </section>
+        ))}
+      </div>
+
+      <nav class="mt-14 flex flex-col gap-3 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between" aria-label="章节导航">
+        {prev ? (
+          <a href={'/novel/' + prev.id} class="card card-flat card-pad flex-1">
+            <span class="mono text-xs text-muted-dim">上一章</span>
+            <b class="mt-1 block text-sm text-[#e9ebf0]">第{prev.no}章　{prev.title}</b>
+          </a>
+        ) : (
+          <a href="/novel" class="card card-flat card-pad flex-1">
+            <span class="mono text-xs text-muted-dim">返回</span>
+            <b class="mt-1 block text-sm text-[#e9ebf0]">目录</b>
+          </a>
+        )}
+        {next ? (
+          <a href={'/novel/' + next.id} class="card card-flat card-pad flex-1 text-right">
+            <span class="mono text-xs text-muted-dim">下一章</span>
+            <b class="mt-1 block text-sm text-[#e9ebf0]">第{next.no}章　{next.title}</b>
+          </a>
+        ) : (
+          <a href="/novel/read" class="card card-flat card-pad flex-1 text-right">
+            <span class="mono text-xs text-muted-dim">已是最后一章</span>
+            <b class="mt-1 block text-sm text-[#e9ebf0]">整本连读</b>
+          </a>
+        )}
+      </nav>
+    </article>
+
+    <aside class="space-y-5">
+      <div class="sticky-aside space-y-5">
+        <div class="card card-flat card-pad reveal">
+          <h2 class="field-label">目录 · 卷{c.volume}</h2>
+          <ul class="mt-4 space-y-2 text-sm">
+            {volumeChapters.map((x) => (
+              <li>
+                <a
+                  href={'/novel/' + x.id}
+                  class:list={['block truncate', x.id === c.id ? 'text-accent' : 'text-muted hover:text-white']}
+                >
+                  {x.no}. {x.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <a href="/novel" class="link-underline mt-4 inline-block text-xs text-muted-dim hover:text-white">全部五卷目录 →</a>
+        </div>
+
+        {sources.length > 0 && (
+          <div class="card card-flat card-pad reveal">
+            <h2 class="field-label">本章出处（视频 + 时间码）</h2>
+            <ul class="mt-4 space-y-2 text-xs">
+              {sources.map((s) => (
+                <li class="flex items-start gap-2">
+                  <span class="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
+                  <a href={'/videos/' + s.id} class="link-underline min-w-0 break-all text-muted hover:text-white">
+                    {s.video ? videoTitle(s.video) : '视频 ' + s.id}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p class="mt-4 text-[11px] leading-5 text-muted-dim">
+              文中形如「视频 603，02:15」的标注即指向对应视频的该时间点；点击可在视频页跳转查看。
+            </p>
+          </div>
+        )}
+
+        {(c.theories ?? []).length > 0 && (
+          <div class="card card-flat card-pad reveal">
+            <h2 class="field-label">本章涉及的理论</h2>
+            <ul class="mt-4 space-y-2 text-sm">
+              {c.theories.map((t) => (
+                <li><a href={'/theories/' + t} class="text-muted hover:text-white">{t}</a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </aside>
+  </div>
+</BaseLayout>
+
+<style>
+  .novel-body p {
+    margin-top: 1.15rem;
+    font-size: 17px;
+    line-height: 2.1;
+    color: #d3d8e2;
+    text-indent: 2em;
+  }
+  .novel-body p:first-child {
+    margin-top: 0;
+  }
+</style>

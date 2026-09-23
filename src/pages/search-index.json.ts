@@ -3,6 +3,7 @@ import {
   events,
   formatDuration,
   glossary,
+  novelChapters,
   people,
   theories,
   titleParts,
@@ -52,6 +53,13 @@ export const GET: APIRoute = () => {
       type: '词条',
       desc: g.definition ?? '',
       meta: (g.aliases ?? []).join(' / '),
+    })),
+    ...novelChapters.map((c) => ({
+      title: '第' + c.no + '章　' + (c.title ?? ''),
+      url: '/novel/' + c.id,
+      type: '传记',
+      desc: c.epigraph ?? '',
+      meta: ['卷' + (c.volume ?? 1) + ' ' + (c.volumeTitle ?? ''), (c.chars ?? 0) + ' 字'].filter(Boolean).join(' · '),
     })),
   ];
 

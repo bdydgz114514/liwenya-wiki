@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { formatNumber, novelChapters, novelMeta, novelVolumeList, novelReadingMinutes } from '../../lib/data';
+
+const totalChars = novelMeta.chars ?? novelChapters.reduce((s, c) => s + (c.chars ?? 0), 0);
+const totalMinutes = novelChapters.reduce((s, c) => s + novelReadingMinutes(c), 0);
+const volumes = novelVolumeList.map((v) => ({
+  ...v,
+  chapters: novelChapters.filter((c) => c.volume === v.no),
+}));
+---
+
+<BaseLayout
+  title="长篇传记"
+  description="《李文亚传 · 一个花农与他的星空》：5 卷 30 章的文学传记，据 1206 个归档视频中的自述材料重述，附视频出处与时间码，只记录与转述，不作真实性背书。"
+  searchType="传记"
+>
+  <PageHero
+    eyebrow="Biography"
+    title="李文亚传"
+    desc="一个花农与他的星空。据 1206 个归档视频中的自述材料，以文学笔法重述一位民间观测者一九九九至二〇二六年的生平、学说、敌人与时代。每一章的主张与主流科学结论并置，涉及的视频出处标在文中，本站只记录与转述，不作真实性背书。"
+    meta={[
+      formatNumber(volumes.length) + ' 卷',
+      formatNumber(novelChapters.length) + ' 章',
+      formatNumber(totalChars) + ' 字',
+      '约 ' + Math.round(totalMinutes / 60) + ' 小时读完',
+    ]}
+  />
+
+  <div class="shell section">
+    <div class="card card-pad reveal mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-xl font-extrabold tracking-tight">开始阅读</h2>
+        <p class="mt-2 text-sm text-muted">建议按顺序读；每章 4—6 节，5 到 8 分钟一章。</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a href="/novel/ch01" class="chip chip-accent">第一章　咸的风 →</a>
+        <a href="/novel/read" class="chip">整本连读</a>
+      </div>
+    </div>
+
+    {volumes.map((v) => (
+      <section class="reveal mb-12">
+        <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-3">
+          <h2 class="text-lg font-extrabold tracking-tight">卷{v.no}　{v.title}</h2>
+          <span class="mono text-xs text-muted-dim">{v.from}—{v.to} 章 · {v.desc}</span>
+        </div>
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          {v.chapters.map((c) => (
+            <a href={'/novel/' + c.id} class="card card-flat card-pad group flex gap-4 transition-colors hover:border-accent/40">
+              <span class="mono mt-1 shrink-0 text-xs text-muted-dim">{String(c.no).padStart(2, '0')}</span>
+              <span class="min-w-0">
+                <b class="block text-[15px] text-[#e9ebf0] group-hover:text-white">{c.title}</b>
+                {c.epigraph && <span class="mt-2 block text-sm text-muted">{c.epigraph}</span>}
+                <span class="mt-3 block text-xs text-muted-dim">
+                  {c.sections?.length ?? 0} 节 · {formatNumber(c.chars ?? 0)} 字 · 约 {novelReadingMinutes(c)} 分钟
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="card card-flat card-pad reveal">
+      <h2 class="field-label">写作说明与声明</h2>
+      <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
+        <li>· 材料来源：知识库中 1206 个归档视频的自述内容、公开条目与视频转写；文中出现「视频 603，02:15」这样的标注，指的是该条素材的出处（视频编号 + 时间码）。</li>
+        <li>· 转述原则：凡是当事人的说法写作「他称／据他自述」，凡是科学界的结论写作「天文界的共识是／实测结果是」；一切指控均降级为主张，并注明目前只有其本人视频作为来源。</li>
+        <li>· 隐私：不收录住址、证件、联系方式、病历与用药等私密信息。</li>
+        <li>· 立场：本站不判断其学说真伪，也不替任何一方背书；写作目的是保存一个民间观测者的完整面貌。</li>
+      </ul>
+      <p class="mt-5 text-sm text-muted">
+        也可在「<a href="/sources" class="link-underline text-[#d7dae1]">来源</a>」页查看采集与理解流程，或在「<a href="/theories" class="link-underline text-[#d7dae1]">理论体系</a>」页看每一套学说的主张与主流对照。
+      </p>
+    </section>
+  </div>
+</BaseLayout>

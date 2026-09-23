@@ -18,6 +18,7 @@ import glossaryJson from '../data/glossary.json';
 import graphJson from '../data/graph.json';
 import peopleJson from '../data/people.json';
 import siteJson from '../data/site.json';
+import novelJson from '../data/novel.json';
 import textbookJson from '../data/textbook.json';
 import theoriesJson from '../data/theories.json';
 import videosJson from '../data/videos.json';
@@ -144,6 +145,32 @@ const textbookMap = (textbookJson ?? {}) as Record<string, Textbook>;
 export function textbookOfTheory(id: string): Textbook | undefined {
   return textbookMap[id];
 }
+
+/* 长篇传记（novel.json）：5 卷 30 章，章节含题记、小节与出处视频编号 */
+export interface NovelSection { title?: string; paras?: string[] }
+export interface NovelChapter {
+  id: string; no: number; title?: string; fullTitle?: string; epigraph?: string;
+  volume?: number; volumeTitle?: string; chars?: number; minutes?: number;
+  sections?: NovelSection[]; videos?: string[]; theories?: string[];
+}
+export interface NovelVolume { no: number; title: string; from: number; to: number; desc?: string }
+const novelPayload = (novelJson ?? {}) as { meta?: Record<string, unknown>; chapters?: NovelChapter[]; volumes?: never };
+export const novelMeta = (novelPayload.meta ?? {}) as {
+  title?: string; subtitle?: string; tagline?: string; chapters?: number; chars?: number; volumes?: NovelVolume[];
+};
+export const novelChapters: NovelChapter[] = novelPayload.chapters ?? [];
+export const novelVolumeList: NovelVolume[] = novelMeta.volumes ?? [];
+export const novelChapterById = new Map(novelChapters.map((c) => [c.id, c]));
+export const novelChapterByNo = new Map(novelChapters.map((c) => [c.no, c]));
+export function novelNeighbors(no: number) {
+  return { prev: novelChapterByNo.get(no - 1), next: novelChapterByNo.get(no + 1) };
+}
+export function novelChaptersOfVolume(vol: number) {
+  return novelChapters.filter((c) => c.volume === vol);
+}
+export function novelReadingMinutes(c: NovelChapter) {
+  return c.minutes ?? Math.max(1, Math.round((c.chars ?? 0) / 400));
+}
 export const eventById = new Map(events.map((e) => [e.id, e]));
 export const glossaryById = new Map(glossary.map((g) => [g.id, g]));
 
@@ -262,6 +289,14 @@ export function seriesList(): { name: string; count: number; hours: number }[] {
   return [...map.entries()]
     .map(([name, v]) => ({ name, count: v.count, hours: Math.round((v.seconds / 3600) * 10) / 10 }))
     .sort((a, b) => b.count - a.count);
+}
+
+/** 缩略图地址：videos.json 里是相对路径（thumbs/1.jpg），必须转成根绝对路径，
+ *  否则在 /videos/ 与 /videos/<id>/ 这类子路径页面会解析成 /videos/thumbs/… 而 404。 */
+export function thumbUrl(v?: Video): string | undefined {
+  const t = v?.thumb;
+  if (!t) return undefined;
+  return t.startsWith('/') || t.startsWith('http') ? t : '/' + t.replace(/^\.?\//, '');
 }
 
 /** 首页精选：优先挑有场景卡 / 有缩略图 / 有摘要的视频 */
