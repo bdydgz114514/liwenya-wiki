@@ -8,13 +8,36 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE = path.resolve(__dirname, '..');
 const DIST = path.join(SITE, 'dist');
-const BIN = path.join(SITE, 'node_modules', '.bin', 'pagefind');
+
+/**
+ * 解析 pagefind 可执行入口。
+ * 不能直接用 node_modules/.bin/pagefind：那是 POSIX shell 脚本，
+ * Windows 上 execFileSync 会 ENOENT（npm 为 Windows 生成的是 .cmd/.ps1）。
+ * 优先直接调 pagefind 的 node runner（跨平台），失败再退回 .bin 垫片。
+ */
+function resolvePagefind() {
+  const require = createRequire(import.meta.url);
+  // pagefind 的 package.json 只导出 "."，所以不能 require.resolve('pagefind/lib/...')
+  // （会抛 ERR_PACKAGE_PATH_NOT_EXPORTED）。改为定位包目录后直接拼 runner 路径。
+  try {
+    const pkgJson = require.resolve('pagefind/package.json', { paths: [SITE] });
+    const runner = path.join(path.dirname(pkgJson), 'lib', 'runner', 'bin.cjs');
+    if (existsSync(runner)) return { cmd: process.execPath, args: [runner] };
+  } catch { /* 继续尝试垫片 */ }
+  const shim = path.join(SITE, 'node_modules', '.bin', process.platform === 'win32' ? 'pagefind.cmd' : 'pagefind');
+  if (!existsSync(shim)) return null;
+  // Windows 下 .cmd 不能直接 execFileSync（EINVAL），交给 cmd.exe；
+  // 不用 shell:true，避免 Node 的 DEP0190 告警（参数未转义）。
+  if (process.platform === 'win32') return { cmd: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', shim] };
+  return { cmd: shim, args: [] };
+}
 
 if (!existsSync(DIST)) {
   console.error('[postbuild] 未找到 dist/，请先运行 astro build');
@@ -52,9 +75,10 @@ const htmlPages = countHtml(DIST);
 console.log('[postbuild] 静态页面：' + htmlPages + ' 个 HTML');
 
 let pagefindOk = false;
-if (existsSync(BIN)) {
+const pf = resolvePagefind();
+if (pf) {
   try {
-    const out = execFileSync(BIN, ['--site', DIST, '--output-subdir', 'pagefind'], {
+    const out = execFileSync(pf.cmd, [...pf.args, '--site', DIST, '--output-subdir', 'pagefind'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 15 * 60 * 1000,
@@ -66,7 +90,7 @@ if (existsSync(BIN)) {
     console.warn('[postbuild] Pagefind 执行失败，将使用 JSON 兜底搜索：' + (err && err.message ? err.message : err));
   }
 } else {
-  console.warn('[postbuild] 未安装 pagefind（node_modules/.bin/pagefind 不存在），跳过全文索引。');
+  console.warn('[postbuild] 未安装 pagefind（找不到 runner 或 .bin 垫片），跳过全文索引。');
 }
 
 const stats = walk(DIST);

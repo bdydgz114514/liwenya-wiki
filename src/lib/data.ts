@@ -255,8 +255,11 @@ export interface ResolvedSource { label: string; href?: string; external: boolea
 export function resolveSource(src: SourceRef | null | undefined): ResolvedSource {
   if (!src) return { label: '未标注来源', external: false };
   if (typeof src === 'string') {
-    const external = /^https?:\/\//.test(src);
-    return { label: external ? src.replace(/^https?:\/\//, '').replace(/\/$/, '') : src, href: src, external };
+    // 字符串型来源有两种写法：完整 URL，或纯文字说明（如「年表（用户提供）」「知识库理论条目」）。
+    // 只有真的是绝对 URL 才给 href —— 否则会渲染出 href="年表（用户提供）" 这种当成相对路径的坏链接。
+    const isUrl = /^https?:\/\//i.test(src) || /^mailto:/i.test(src);
+    if (!isUrl) return { label: src, external: false };
+    return { label: src.replace(/^https?:\/\//, '').replace(/\/$/, ''), href: src, external: true };
   }
   const url = str(src.url);
   const label = str(src.title) || str(src.label) || url || '未命名来源';

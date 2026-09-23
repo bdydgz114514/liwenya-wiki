@@ -1,0 +1,44 @@
+---
+/**
+ * 板块筹备中的统一占位块。
+ * 用途：内容尚未公开的板块（电影 / 视频库）用同一套观感，避免各自写一遍 hero + 说明。
+ * 只做展示，不引用任何数据文件，因此占位页不会随数据变化而失效。
+ */
+interface Props {
+  eyebrow?: string;
+  title?: string;
+  desc?: string;
+  /** 底部可点的跳转芯片，形如 [{ href, label }] */
+  links?: { href: string; label: string }[];
+  /** 上方可选的说明条目（每行一条） */
+  notes?: string[];
+}
+
+const {
+  eyebrow = 'Coming soon',
+  title = '敬请期待',
+  desc = '该板块正在筹备中，相关物料暂不公开，后续进展会在本站同步。',
+  links = [],
+  notes = [],
+} = Astro.props;
+---
+
+<div class="shell section">
+  <header class="reveal mt-6">
+    <span class="eyebrow">{eyebrow}</span>
+    <h1 class="display-sm mt-4 text-shadow-hero">{title}</h1>
+    <p class="mt-5 max-w-3xl text-base leading-8 text-muted">{desc}</p>
+    {notes.length > 0 && (
+      <ul class="mt-6 max-w-3xl space-y-2 text-sm leading-7 text-muted">
+        {notes.map((n) => <li>· {n}</li>)}
+      </ul>
+    )}
+    <div class="accent-rule mt-8"></div>
+  </header>
+
+  {links.length > 0 && (
+    <div class="mt-9 flex flex-wrap gap-2">
+      {links.map((l) => <a class="chip chip-btn" href={l.href}>{l.label}</a>)}
+    </div>
+  )}
+</div>

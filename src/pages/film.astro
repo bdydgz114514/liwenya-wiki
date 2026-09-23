@@ -1,127 +1,31 @@
 ---
+// 电影板块：内容尚未公开，只给占位页。
+// 影片物料（trailer / 三段在线版）已从站点下架，页面不再渲染任何 <video>，
+// 避免出现指向不存在文件的 404 播放器。数据与文案仍保留在 src/data/film.json，
+// 将来要放出来时，把本页改回读取 film.json 的完整版即可。
 import BaseLayout from '../layouts/BaseLayout.astro';
-import filmJson from '../data/film.json';
-
-const f = filmJson as any;
-const volumes = [1, 2, 3, 4, 5];
-const volNames: Record<number, string> = { 1: '泥土里长出的星', 2: '他的学说', 3: '他的敌人们', 4: '事件编年', 5: '评说与余音' };
-const chapters = (f.chaptersList ?? []) as any[];
+import ComingSoon from '../components/ComingSoon.astro';
 ---
 
 <BaseLayout
   title="电影"
-  description="《李文亚传 · 一个花农与他的星空》纪录式文学电影：30 章分镜、560 个镜头、AI 生成画面与真实归档影像、AI 合成旁白与程序化配乐。"
+  description="李文亚 Wiki · 电影板块筹备中，敬请期待。"
   searchType="电影"
 >
-  <div class="shell section">
-    <nav class="mono text-xs text-muted-dim" aria-label="面包屑">
-      <a href="/novel" class="hover:text-white">长篇传记</a>
-      <span class="mx-2">/</span>
-      <span class="text-muted">电影</span>
-    </nav>
+  <nav class="shell mono text-xs text-muted-dim" aria-label="面包屑">
+    <a href="/novel" class="hover:text-white">长篇传记</a>
+    <span class="mx-2">/</span>
+    <span class="text-muted">电影</span>
+  </nav>
 
-    <header class="reveal mt-6">
-      <span class="eyebrow">Film</span>
-      <h1 class="display-sm mt-4 text-shadow-hero">{f.title}<span class="text-accent"> · 电影</span></h1>
-      <p class="mt-5 max-w-3xl text-base leading-8 text-muted">
-        {f.subtitle} —— {f.tagline}。以定本 30 章为剧本，逐章分镜：{f.shots} 个镜头、{f.chapters} 张章节卡，
-        其中 {f.archiveShots} 个镜头（{f.archiveShare}%）取自 1206 个归档视频的真实影像，其余为 AI 生成画面。
-        旁白 {f.narrationChars} 字由 AI 合成，配乐为程序化生成。
-      </p>
-      <div class="mt-6 flex flex-wrap gap-1.5">
-        <span class="chip chip-accent">片长 {f.durationLabel}</span>
-        <span class="chip">{f.shots} 个镜头</span>
-        <span class="chip">归档影像 {f.archiveShare}%</span>
-        <span class="chip">旁白 {f.narrationChars} 字</span>
-      </div>
-      <div class="accent-rule mt-8"></div>
-    </header>
-
-    <section class="mt-10 reveal">
-      <h2 class="field-label">预告片</h2>
-      <div class="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
-        <video class="block w-full" controls preload="metadata" playsinline poster="/img/film-poster.jpg">
-          <source src={f.trailer} type="video/mp4" />
-          你的浏览器不支持内嵌视频，请下载观看。
-        </video>
-        <p class="border-t border-white/10 px-4 py-3 text-xs leading-6 text-muted">
-          预告片约占全片镜头的十分之一，用于快速了解影像风格；完整成片 {f.durationLabel}，{f.fullFilmNote}
-        </p>
-      </div>
-    </section>
-
-    <section class="mt-12 reveal">
-      <h2 class="field-label">在线观看全片</h2>
-      <p class="mt-3 text-sm text-muted">{f.onlineNote}</p>
-      <div class="mt-5 grid gap-5 md:grid-cols-2">
-        {(f.parts ?? []).map((p: any) => (
-          <div class="card card-flat card-pad">
-            <div class="flex items-center justify-between gap-3">
-              <b class="text-sm text-[#e9ebf0]">{p.label}</b>
-              <span class="mono text-xs text-muted-dim">{p.range}</span>
-            </div>
-            <video class="mt-3 block w-full rounded-lg border border-white/10 bg-black/40" controls preload="none" playsinline>
-              <source src={p.file} type="video/mp4" />
-            </video>
-          </div>
-        ))}
-      </div>
-      <p class="mt-4 text-xs leading-6 text-muted-dim">
-        三段按时间顺序接续：第 1—11 章、第 12—21 章、第 22—30 章。若需 1080p 高清版或离线收藏，请下载「{f.title}_电影_1080p.mp4」（735 MB）。
-      </p>
-    </section>
-
-    <section class="mt-12 grid gap-5 md:grid-cols-2">
-      <div class="card card-flat card-pad reveal">
-        <h2 class="field-label">制作方式</h2>
-        <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
-          <li>· 画面：SDXL-Turbo 生成的电影感静帧（1216×704）＋ 归档影像实拍片段/静帧缓推，共 {f.shots} 个镜头</li>
-          <li>· 旁白：{f.voice}，逐镜头合成为独立音轨后与画面对齐</li>
-          <li>· 配乐：{f.music}，按章情绪切换、旁白处自动压低</li>
-          <li>· 字幕：硬字幕（ASS），章节卡、片头片尾与声明一并烧录</li>
-        </ul>
-      </div>
-      <div class="card card-flat card-pad reveal">
-        <h2 class="field-label">观看与下载</h2>
-        <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
-          <li>· 在线：本页预告片；完整成片见实例 8899 文件服务</li>
-          <li>· 离线：随「李文亚Wiki_离线版」一起分发（见下载目录）</li>
-          <li>· 剧本：电影即定本全文的影像化，可在「<a href="/novel" class="link-underline text-[#d7dae1]">长篇传记</a>」逐章对照</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="mt-12 reveal">
-      <h2 class="field-label">分章镜头表</h2>
-      <p class="mt-3 text-sm text-muted">每章 12—18 个镜头，共 30 章；括号内为该章情绪基调。</p>
-      <div class="mt-5 space-y-6">
-        {volumes.map((v) => (
-          <div>
-            <h3 class="text-sm font-bold text-[#e9ebf0]">卷{v}　{volNames[v]}</h3>
-            <div class="mt-3 grid gap-2 md:grid-cols-2">
-              {chapters.filter((c) => c.volume === v).map((c) => {
-                const n = f.shots > 0 ? Math.round(f.shots / f.chapters) : 0;
-                return (
-                  <a href={'/novel/ch' + String(c.no).padStart(2, '0')} class="card card-flat card-pad flex items-center justify-between gap-3 text-sm">
-                    <span class="truncate text-[#d7dae1]">第{c.no}章　{c.title}</span>
-                    <span class="mono shrink-0 text-xs text-muted-dim">约 {n} 镜</span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <section class="card card-flat card-pad reveal mt-12">
-      <h2 class="field-label">声明</h2>
-      <ul class="mt-4 space-y-2 text-sm leading-7 text-muted">
-        <li>· 本片为文学化纪录影像，据公开视频中的自述材料改编；涉及主张处一律标注「他称」，并保留与主流科学结论的对照。</li>
-        <li>· 影像中的 AI 生成部分不代表任何真实场景；出现的人物画面均为归档视频原始影像或背影、手部等非相貌描述。</li>
-        <li>· 旁白为 AI 合成语音，非当事人配音；配乐为程序化生成，不含第三方素材。</li>
-        <li>· 本站不对片中任何主张作真实性背书。</li>
-      </ul>
-    </section>
-  </div>
+  <ComingSoon
+    eyebrow="Film"
+    title="敬请期待"
+    desc="电影板块正在筹备中。相关物料暂不公开，后续进展会在本站与「长篇传记」页同步。"
+    links={[
+      { href: '/novel', label: '先看长篇传记（30 章）' },
+      { href: '/videos', label: '视频库' },
+      { href: '/theories', label: '理论体系' },
+    ]}
+  />
 </BaseLayout>

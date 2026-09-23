@@ -1,12 +1,9 @@
 ---
-import EmptyState from '../components/EmptyState.astro';
 import SectionHeading from '../components/SectionHeading.astro';
 import StatBar from '../components/StatBar.astro';
 import TimelineList from '../components/TimelineList.astro';
-import VideoCard from '../components/VideoCard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import {
-  featuredVideos,
   formatNumber,
   glossary,
   latestEvents,
@@ -20,7 +17,6 @@ import {
   videos,
 } from '../lib/data';
 
-const featured = featuredVideos(6);
 const eventsPreview = latestEvents(4);
 const series = seriesList().slice(0, 6);
 const maxSeries = series[0]?.count ?? 1;
@@ -60,8 +56,8 @@ const navCards = [
     href: '/videos',
     index: '05',
     title: '视频库',
-    count: formatNumber(stats.videos) + ' 个视频',
-    desc: '全量归档索引：缩略图占位、标题、时长、系列与标签，支持关键词、系列与标签组合筛选。',
+    count: '筹备中',
+    desc: '归档视频的索引与逐场景理解结果暂不公开。可先浏览人物志、理论体系与事件年表。',
   },
   {
     href: '/about',
@@ -163,19 +159,24 @@ const specRows = [
     </div>
   </section>
 
-  <!-- ===================== 精选视频 ===================== -->
+  <!-- ===================== 精选视频（暂不公开，只留预告） ===================== -->
   <section class="section-tight shell" id="featured">
     <SectionHeading
       eyebrow="Featured"
-      title="精选视频"
-      desc="优先展示已产出场景卡、缩略图或 B 站来源的条目；点开任意视频可查看逐场景的画面、台词、声音与画面文字。"
+      title="视频库 · 敬请期待"
+      desc="归档视频的索引与逐场景理解结果正在整理，暂不公开；下方条目仅为板块预告。"
       href="/videos"
-      linkLabel={'全部 ' + formatNumber(stats.videos) + ' 个视频'}
+      linkLabel="视频库"
     />
-    <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {featured.map((v) => <VideoCard video={v} />)}
+    <div class="card card-flat card-pad reveal mt-8 max-w-3xl">
+      <p class="text-base font-bold text-chalk">敬请期待</p>
+      <p class="mt-2 text-sm leading-7 text-muted">
+        视频库板块正在筹备中。全量归档为 1206 个视频（约 170 小时），仍在整理与核对出处，完成后会在本站同步。
+        在此之前，可以先看 <a class="link-underline" href="/novel">长篇传记（30 章）</a>、
+        <a class="link-underline" href="/theories">理论体系</a> 与
+        <a class="link-underline" href="/timeline">事件年表</a>。
+      </p>
     </div>
-    {featured.length === 0 && <EmptyState title="暂无精选视频" desc="videos.json 为空或所有条目缺少必要字段。" />}
   </section>
 
   <!-- ===================== 最新事件 + 系列分布 ===================== -->

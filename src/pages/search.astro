@@ -15,7 +15,7 @@ const types = ['全部', '视频', '人物', '理论', '事件', '词条'];
     eyebrow="Search"
     title="站内搜索"
     desc="本地索引（标题 / 摘要 / 别名 / 系列 / 标签）在浏览器内即时匹配，支持中文子串；需要深入正文与场景卡时，使用下方的 Pagefind 全文检索。查询词不会离开你的浏览器。"
-    meta={[formatNumber(stats.videos) + ' 个视频', formatNumber(stats.entities) + ' 条实体', '数据版本 ' + updatedAt]}
+    meta={['人物 / 理论 / 事件 / 传记', formatNumber(stats.entities) + ' 条实体', '数据版本 ' + updatedAt]}
   />
 
   <div class="shell section">
@@ -78,7 +78,7 @@ const types = ['全部', '视频', '人物', '理论', '事件', '词条'];
     <div class="mt-16 grid gap-5 md:grid-cols-3">
       <a href="/videos" class="card card-pad reveal">
         <h3 class="text-base font-bold">视频库</h3>
-        <p class="mt-2 text-sm text-muted">按系列、标签与关键词筛选全部 {formatNumber(stats.videos)} 个视频。</p>
+        <p class="mt-2 text-sm text-muted">筹备中：归档视频的索引与逐场景理解结果暂不公开。</p>
       </a>
       <a href="/glossary" class="card card-pad reveal">
         <h3 class="text-base font-bold">梗词典</h3>
