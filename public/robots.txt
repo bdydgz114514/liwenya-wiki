@@ -1,3 +1,6 @@
 User-agent: *
 Allow: /
-Sitemap: /sitemap.xml
+
+# Sitemap 必须是绝对 URL（规范要求）；相对路径多数爬虫会忽略。
+# 换域名时改这里一处，并与 astro.config.mjs 的 DEFAULT_SITE 保持一致。
+Sitemap: https://6st1svrof-liwenyawiki-3r3y2wu.maozi.io/sitemap.xml
